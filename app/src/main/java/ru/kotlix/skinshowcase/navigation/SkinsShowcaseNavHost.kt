@@ -26,6 +26,7 @@ import ru.kotlix.skinshowcase.message.chat.ChatScreen
 import ru.kotlix.skinshowcase.screens.profile.ProfileScreen
 import ru.kotlix.skinshowcase.screens.favorites.FavoritesScreen
 import ru.kotlix.skinshowcase.screens.settings.SettingsScreen
+import ru.kotlix.skinshowcase.screens.createoffer.CreateOfferSelectSkinScreen
 import ru.kotlix.skinshowcase.screens.offers.OffersScreen
 import ru.kotlix.skinshowcase.screens.skindetail.SkinDetailScreen
 
@@ -88,13 +89,14 @@ fun SkinsShowcaseNavHost(
         ) {
             composable(TabRoutes.HOME) {
                 HomeScreen(
-                    onSkinClick = { skinId -> navController.navigate(skinDetailRoute(skinId)) }
+                    onSkinClick = { skinId -> navController.navigate(skinDetailRoute(skinId)) },
+                    onCreateOffer = { navController.navigate(OverlayRoutes.CREATE_OFFER) }
                 )
             }
             composable(TabRoutes.SKINS) {
                 OffersScreen(
                     onOfferClick = { skinId -> navController.navigate(skinDetailRoute(skinId, isOwnOffer = true)) },
-                    onCreateOffer = { }
+                    onCreateOffer = { navController.navigate(OverlayRoutes.CREATE_OFFER) }
                 )
             }
             composable(TabRoutes.MESSAGES) {
@@ -115,6 +117,14 @@ fun SkinsShowcaseNavHost(
                             launchSingleTop = true
                             restoreState = true
                         }
+                    },
+                    onCreateOffer = {
+                        navController.navigate(TabRoutes.SKINS) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        navController.navigate(OverlayRoutes.CREATE_OFFER)
                     },
                     onLogout = onLogout
                 )
@@ -152,6 +162,16 @@ fun SkinsShowcaseNavHost(
                 FavoritesScreen(
                     onSkinClick = { skinId -> navController.navigate(skinDetailRoute(skinId)) },
                     onBack = { navController.popBackStack() }
+                )
+            }
+            composable(OverlayRoutes.CREATE_OFFER) {
+                CreateOfferSelectSkinScreen(
+                    onBack = { navController.popBackStack() },
+                    onSkinClick = { skinId ->
+                        navController.navigate(skinDetailRoute(skinId, isOwnOffer = true)) {
+                            popUpTo(OverlayRoutes.CREATE_OFFER) { inclusive = true }
+                        }
+                    }
                 )
             }
             composable(OverlayRoutes.ABOUT) {

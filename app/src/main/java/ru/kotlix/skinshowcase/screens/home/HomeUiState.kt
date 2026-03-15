@@ -7,6 +7,8 @@ data class HomeUiState(
     val searchQuery: String = "",
     val skins: List<Skin> = emptyList(),
     val isLoading: Boolean = false,
+    val isRefreshing: Boolean = false,
+    val errorMessage: String? = null,
     val filter: SkinFilter = SkinFilter(),
     val filterSheetVisible: Boolean = false,
     val sortOption: SortOption = SortOption.DEFAULT

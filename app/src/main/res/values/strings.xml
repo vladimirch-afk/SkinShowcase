@@ -29,6 +29,7 @@
     <string name="home_search_hint">Поиск</string>
     <string name="home_menu_description">Меню</string>
     <string name="home_create_offer">Создать оффер</string>
+    <string name="create_offer_select_skin_title">Мои скины</string>
     <string name="profile_your_profile">Ваш профиль</string>
     <string name="profile_active_offers">Активные офферы</string>
     <string name="profile_trade_history">История сделок</string>
@@ -110,4 +111,8 @@
 <string name="sort_float_desc">Float: по убыванию</string>
 <string name="sort_rarity_asc">Редкость: по возрастанию</string>
 <string name="sort_rarity_desc">Редкость: по убыванию</string>
+<string name="error_data_title">Ошибка получения данных</string>
+<string name="error_data_message">Ошибка получения данных. Возможна проблема с подключением к интернету.</string>
+<string name="error_dialog_ok">ОК</string>
+<string name="error_dialog_settings">Настройки</string>
 </resources>

@@ -15,6 +15,7 @@ object TabRoutes {
  */
 object OverlayRoutes {
     const val SKIN_DETAIL = "skin/{skinId}/{isOwnOffer}"
+    const val CREATE_OFFER = "create_offer"
     const val CHAT = "chat/{chatId}"
     const val SETTINGS = "settings"
     const val ABOUT = "about"

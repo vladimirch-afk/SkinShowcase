@@ -83,6 +83,10 @@ class ChatViewModel(
 
     fun getChatId(): String = chatId
 
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
     companion object {
         const val CHAT_ID_ARG = "chatId"
     }

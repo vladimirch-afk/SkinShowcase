@@ -1,5 +1,7 @@
 package ru.kotlix.skinshowcase.message.chats
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,7 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -39,11 +41,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.message.R
 import ru.kotlix.skinshowcase.message.domain.ChatItem
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatsListScreen(
     onChatClick: (String) -> Unit = {},
@@ -83,7 +85,23 @@ fun ChatsListScreen(
             state = state,
             onChatClick = onChatClick,
             onRetry = viewModel::loadChats,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        )
+    }
+
+    if (state.errorMessage != null) {
+        val context = LocalContext.current
+        DataErrorDialog(
+            title = stringResource(R.string.error_data_title),
+            message = stringResource(R.string.error_data_message),
+            okText = stringResource(R.string.error_dialog_ok),
+            settingsText = stringResource(R.string.error_dialog_settings),
+            onDismiss = viewModel::clearError,
+            onOpenSettings = {
+                context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+            }
         )
     }
 
@@ -105,60 +123,69 @@ private fun ChatsListContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (state.isLoading && state.chats.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator()
-        }
-        return
-    }
-
-    if (state.errorMessage != null && state.chats.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    text = state.errorMessage!!,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = onRetry) {
-                    Text(stringResource(R.string.message_retry))
-                }
-            }
-        }
-        return
-    }
-
-    if (state.chats.isEmpty()) {
-        Box(
-            modifier = modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = stringResource(R.string.message_empty_chats),
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-        return
-    }
-
+    // Всегда LazyColumn, чтобы PullToRefreshBox распознавал жест (нужен скролл).
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        items(
-            items = state.chats,
-            key = { it.id }
-        ) { chat ->
-            ChatListItem(
-                chat = chat,
-                onClick = { onChatClick(chat.id) }
-            )
+        when {
+            state.isLoading && state.chats.isEmpty() -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+            state.errorMessage != null && state.chats.isEmpty() -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.error_data_title),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+            state.chats.isEmpty() -> {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.message_empty_chats),
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+            }
+            else -> {
+                items(
+                    items = state.chats,
+                    key = { it.id }
+                ) { chat ->
+                    ChatListItem(
+                        chat = chat,
+                        onClick = { onChatClick(chat.id) }
+                    )
+                }
+            }
+        }
+        // Чтобы список всегда скроллился и PullToRefresh срабатывал.
+        item {
+            Spacer(modifier = Modifier.height(400.dp))
         }
     }
 }
@@ -168,29 +195,27 @@ private const val STEAM_ID_LENGTH = 17
 private fun isValidSteamId(value: String): Boolean =
     value.length == STEAM_ID_LENGTH && value.all { it.isDigit() }
 
+/** Принимает и Steam ID (17 цифр), и ник/имя (любой непустой текст). */
+private fun isSteamIdOrNickValid(value: String): Boolean = value.isNotBlank()
+
 @Composable
 private fun NewChatDialog(
     onDismiss: () -> Unit,
     onOpenChat: (String) -> Unit
 ) {
-    var steamId by remember { mutableStateOf("") }
+    var query by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-    val trimmed = steamId.trim()
-    val valid = isValidSteamId(trimmed)
-    val showError = trimmed.isNotEmpty() && !valid
+    val trimmed = query.trim()
+    val valid = isSteamIdOrNickValid(trimmed)
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.message_new_chat)) },
         text = {
             OutlinedTextField(
-                value = steamId,
-                onValueChange = { new -> steamId = new.filter { it.isDigit() }.take(STEAM_ID_LENGTH) },
+                value = query,
+                onValueChange = { new -> query = new },
                 label = { Text(stringResource(R.string.message_steam_id_hint)) },
-                supportingText = if (showError) {
-                    { Text(stringResource(R.string.message_steam_id_invalid), color = MaterialTheme.colorScheme.error) }
-                } else null,
-                isError = showError,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -220,10 +245,15 @@ private fun ChatListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val displayTitle = if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID) {
+        stringResource(R.string.message_support_chat)
+    } else {
+        chat.title
+    }
     ListItem(
         headlineContent = {
             Text(
-                text = chat.title,
+                text = displayTitle,
                 style = MaterialTheme.typography.titleMedium
             )
         },

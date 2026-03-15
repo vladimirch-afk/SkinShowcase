@@ -17,13 +17,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +43,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
+import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
+import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.screens.profile.OfferSummary
 
@@ -51,6 +60,14 @@ fun OffersScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    DisposableEffect(Unit) {
+        onDispose { viewModel.clearRefreshing() }
+    }
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing) return@LaunchedEffect
+        kotlinx.coroutines.delay(45_000)
+        viewModel.clearRefreshing()
+    }
 
     Column(
         modifier = modifier
@@ -69,19 +86,26 @@ fun OffersScreen(
                 color = MaterialTheme.colorScheme.onBackground
             )
         }
-        LazyColumn(
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 80.dp)
+        @OptIn(ExperimentalMaterial3Api::class)
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.refreshOffers() },
+            modifier = Modifier.weight(1f)
         ) {
-            items(items = state.offers, key = { it.id }) { offer ->
-                OfferCard(
-                    offer = offer,
-                    onClick = { onOfferClick(offer.id) },
-                    onDelete = { viewModel.removeOffer(offer.id) }
-                )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 80.dp)
+            ) {
+                items(items = state.offers, key = { it.id }) { offer ->
+                    OfferCard(
+                        offer = offer,
+                        onClick = { onOfferClick(offer.id) },
+                        onDelete = { viewModel.removeOffer(offer.id) }
+                    )
+                }
             }
         }
         Box(
@@ -89,12 +113,25 @@ fun OffersScreen(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            androidx.compose.material3.Button(
+            Button(
                 onClick = onCreateOffer,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(
+                        Brush.horizontalGradient(
+                            colors = listOf(PurpleBlueGradientStart, PurpleBlueGradientEnd)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ),
+                colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+                contentPadding = ButtonDefaults.ContentPadding,
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Text(stringResource(R.string.home_create_offer))
+                Text(
+                    text = stringResource(R.string.home_create_offer),
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
         }
     }

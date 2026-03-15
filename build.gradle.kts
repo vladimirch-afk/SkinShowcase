@@ -6,3 +6,13 @@ plugins {
     alias(libs.plugins.kotlin.compose) apply false
     alias(libs.plugins.ksp) apply false
 }
+
+subprojects {
+    afterEvaluate {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            kotlinOptions {
+                freeCompilerArgs += "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api"
+            }
+        }
+    }
+}

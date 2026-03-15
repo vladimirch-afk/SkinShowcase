@@ -8,10 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import ru.kotlix.skinshowcase.core.domain.Skin
-import ru.kotlix.skinshowcase.core.domain.SkinRarity
-import ru.kotlix.skinshowcase.core.domain.SkinSpecial
-import ru.kotlix.skinshowcase.core.domain.SkinWear
+import ru.kotlix.skinshowcase.core.network.SkinsProvider
 import ru.kotlix.skinshowcase.navigation.NavRoutes
 
 class SkinDetailViewModel(
@@ -28,35 +25,45 @@ class SkinDetailViewModel(
     }
 
     private fun loadSkin(id: String) {
+        if (id.isBlank()) {
+            _uiState.update {
+                it.copy(isLoading = false, errorMessage = "Не указан id скина")
+            }
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            // TODO: load from repository by id
-            _uiState.update {
-                it.copy(
-                    skin = sampleSkin(id),
-                    isLoading = false
-                )
-            }
+            runCatching {
+                SkinsProvider.repository.getSkinByIdFromApi(id)
+            }.fold(
+                onSuccess = { skin ->
+                    _uiState.update {
+                        it.copy(
+                            skin = skin,
+                            isLoading = false,
+                            errorMessage = if (skin == null) "Скин не найден" else null
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    _uiState.update {
+                        it.copy(
+                            skin = null,
+                            isLoading = false,
+                            errorMessage = e.message ?: "Ошибка загрузки"
+                        )
+                    }
+                }
+            )
         }
     }
 
     fun getSkinId(): String = skinId
 
-    private fun sampleSkin(id: String): Skin = Skin(
-        id = id,
-        name = "АК-47 | Красная линия",
-        imageUrl = null,
-        price = 40_000.0,
-        isFavorite = false,
-        floatValue = 0.12345,
-        special = SkinSpecial.STATTRAK,
-        patternIndex = 661,
-        stickerIds = emptyList(),
-        stickerNames = listOf("Sticker 1", "Foil"),
-        hasKeychain = true,
-        keychainNames = listOf("Брелок"),
-        rarity = SkinRarity.CLASSIFIED,
-        collection = "The Phoenix Collection",
-        wear = SkinWear.FT
-    )
+    fun clearError() {
+        _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    // --- данные-заглушки (отключены, загрузка через api-gateway) ---
+    // private fun sampleSkin(id: String): Skin = Skin(...)
 }

@@ -2,6 +2,8 @@ package ru.kotlix.skinshowcase.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.Lifecycle
@@ -92,16 +95,30 @@ fun ProfileScreen(
             if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshPrivacy()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.clearRefreshing()
+        }
+    }
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing) return@LaunchedEffect
+        kotlinx.coroutines.delay(45_000)
+        viewModel.clearRefreshing()
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+    @OptIn(ExperimentalMaterial3Api::class)
+    PullToRefreshBox(
+        isRefreshing = state.isRefreshing,
+        onRefresh = { viewModel.refreshProfile() },
+        modifier = modifier.fillMaxSize()
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
         ProfileHeaderCard(
             steamNickname = state.steamNickname,
             steamAvatarUrl = state.steamAvatarUrl
@@ -161,6 +178,7 @@ fun ProfileScreen(
                 color = MaterialTheme.colorScheme.error
             )
         }
+    }
     }
 }
 

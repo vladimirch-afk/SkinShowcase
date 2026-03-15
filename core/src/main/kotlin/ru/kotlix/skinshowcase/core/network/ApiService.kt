@@ -1,13 +1,14 @@
 package ru.kotlix.skinshowcase.core.network
 
 import retrofit2.http.GET
+import retrofit2.http.Path
 
-/**
- * Placeholder REST API for skins.
- * Replace with real endpoints (e.g. Steam/CS skins).
- */
+
 interface ApiService {
 
-    @GET("skins")
+    @GET("api/v1/items")
     suspend fun getSkins(): List<SkinDto>
+
+    @GET("api/v1/items/{id}")
+    suspend fun getSkinById(@Path("id") id: String): SkinDto
 }

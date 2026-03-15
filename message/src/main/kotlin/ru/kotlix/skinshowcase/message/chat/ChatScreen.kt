@@ -1,5 +1,7 @@
 package ru.kotlix.skinshowcase.message.chat
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,12 +31,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.message.R
 import ru.kotlix.skinshowcase.message.domain.MessageItem
@@ -99,14 +103,6 @@ fun ChatScreen(
                     MessageBubble(message = message)
                 }
             }
-            if (state.errorMessage != null) {
-                Text(
-                    text = state.errorMessage!!,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-            }
             ChatInputRow(
                 draft = state.messageDraft,
                 onDraftChange = viewModel::updateDraft,
@@ -114,6 +110,20 @@ fun ChatScreen(
                 sending = state.isSending
             )
         }
+    }
+
+    if (state.errorMessage != null) {
+        val context = LocalContext.current
+        DataErrorDialog(
+            title = stringResource(R.string.error_data_title),
+            message = stringResource(R.string.error_data_message),
+            okText = stringResource(R.string.error_dialog_ok),
+            settingsText = stringResource(R.string.error_dialog_settings),
+            onDismiss = viewModel::clearError,
+            onOpenSettings = {
+                context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+            }
+        )
     }
 }
 

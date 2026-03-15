@@ -1,5 +1,7 @@
 package ru.kotlix.skinshowcase.screens.home
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,7 +39,10 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -48,6 +53,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,6 +68,7 @@ import ru.kotlix.skinshowcase.core.domain.SkinWear
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
@@ -74,10 +81,27 @@ private val AVATAR_SIZE = 32.dp
 @Composable
 fun HomeScreen(
     onSkinClick: (String) -> Unit = {},
+    onCreateOffer: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadSkins()
+    }
+    DisposableEffect(Unit) {
+        onDispose { viewModel.clearRefreshing() }
+    }
+    LaunchedEffect(state.skins) {
+        viewModel.clearRefreshing()
+    }
+    LaunchedEffect(state.isRefreshing) {
+        if (!state.isRefreshing) return@LaunchedEffect
+        kotlinx.coroutines.delay(45_000)
+        viewModel.clearRefreshing()
+    }
+
     val byFilter = SkinFilterApplicator.apply(state.skins, state.filter)
     val filteredSkins = filterSkinsByQuery(byFilter, state.searchQuery)
     val sortedSkins = sortSkins(filteredSkins, state.sortOption)
@@ -109,28 +133,78 @@ fun HomeScreen(
             sortOption = state.sortOption,
             onSortSelect = viewModel::setSortOption
         )
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
-        ) {
-            items(
-                items = sortedSkins,
-                key = { it.id }
-            ) { skin ->
-                SkinListingCard(
-                    skin = skin,
-                    onClick = { onSkinClick(skin.id) }
+        if (state.errorMessage != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = stringResource(R.string.error_data_title),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
+            }
+            val context = LocalContext.current
+            DataErrorDialog(
+                title = stringResource(R.string.error_data_title),
+                message = stringResource(R.string.error_data_message),
+                okText = stringResource(R.string.error_dialog_ok),
+                settingsText = stringResource(R.string.error_dialog_settings),
+                onDismiss = viewModel::clearError,
+                onOpenSettings = {
+                    context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                }
+            )
+        } else {
+        @OptIn(ExperimentalMaterial3Api::class)
+        PullToRefreshBox(
+            isRefreshing = state.isRefreshing,
+            onRefresh = { viewModel.loadSkins() },
+            modifier = Modifier.fillMaxSize()
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+            ) {
+                if (state.isLoading && sortedSkins.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.padding(24.dp)
+                            )
+                        }
+                    }
+                }
+                items(
+                    items = sortedSkins,
+                    key = { it.id }
+                ) { skin ->
+                    SkinListingCard(
+                        skin = skin,
+                        onClick = { onSkinClick(skin.id) }
+                    )
+                }
+                // Чтобы список всегда скроллился и PullToRefresh срабатывал.
+                item {
+                    Spacer(modifier = Modifier.height(400.dp))
+                }
             }
         }
         HomeCreateOfferButton(
+            onClick = onCreateOffer,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
         )
+        }
     }
 }
 

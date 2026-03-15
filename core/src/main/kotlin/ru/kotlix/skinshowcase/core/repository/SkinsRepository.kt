@@ -2,6 +2,7 @@ package ru.kotlix.skinshowcase.core.repository
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import retrofit2.HttpException
 import ru.kotlix.skinshowcase.core.database.dao.FavoriteSkinDao
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain
@@ -24,6 +25,16 @@ class SkinsRepository(
         val favoriteIds = favoriteDao.getAllIds().toSet()
         val remote = api.getSkins()
         return remote.map { dto -> dto.dtoToDomain(isFavorite = dto.id in favoriteIds) }
+    }
+
+    suspend fun getSkinByIdFromApi(id: String): Skin? {
+        return try {
+            val dto = api.getSkinById(id)
+            val isFav = favoriteDao.getById(id) != null
+            dto.dtoToDomain(isFavorite = isFav)
+        } catch (e: HttpException) {
+            if (e.code() == 404) null else throw e
+        }
     }
 
     suspend fun addToFavorites(skin: Skin) {

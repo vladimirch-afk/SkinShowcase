@@ -2,6 +2,7 @@ package ru.kotlix.skinshowcase
 
 import android.app.Application
 import ru.kotlix.skinshowcase.core.network.DebugAuthToken
+import ru.kotlix.skinshowcase.core.network.SkinsProvider
 import ru.kotlix.skinshowcase.settings.PrivacyPreferences
 
 class SkinsShowcaseApplication : Application() {
@@ -9,6 +10,7 @@ class SkinsShowcaseApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         PrivacyPreferences.init(this)
+        SkinsProvider.init(this)
         setDebugAuthTokenFromBuildConfig()
     }
 

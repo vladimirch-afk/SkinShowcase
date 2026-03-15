@@ -6,7 +6,8 @@ data class ProfileUiState(
     val activeOffers: List<OfferSummary> = emptyList(),
     val dealHistory: List<DealSummary> = emptyList(),
     val showProfile: Boolean = true,
-    val showOffers: Boolean = true
+    val showOffers: Boolean = true,
+    val isRefreshing: Boolean = false
 ) {
     val firstOffer: OfferSummary? get() = activeOffers.firstOrNull()
     val firstDeal: DealSummary? get() = dealHistory.firstOrNull()

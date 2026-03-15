@@ -1,11 +1,14 @@
 package ru.kotlix.skinshowcase.screens.skindetail
 
+import android.content.Intent
+import android.provider.Settings
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -36,11 +39,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.core.domain.Skin
+import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
@@ -65,6 +70,7 @@ fun SkinDetailScreen(
 
     Column(
         modifier = modifier
+            .fillMaxSize()
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
     ) {
@@ -87,9 +93,40 @@ fun SkinDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+            if (state.errorMessage != null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.error_data_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                val context = LocalContext.current
+                DataErrorDialog(
+                    title = stringResource(R.string.error_data_title),
+                    message = stringResource(R.string.error_data_message),
+                    okText = stringResource(R.string.error_dialog_ok),
+                    settingsText = stringResource(R.string.error_dialog_settings),
+                    onDismiss = viewModel::clearError,
+                    onOpenSettings = {
+                        context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS))
+                    }
+                )
+            } else if (state.isLoading && state.skin == null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(Modifier.padding(24.dp))
+                }
+            } else {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -164,6 +201,7 @@ fun SkinDetailScreen(
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
+            }
             }
         }
     }
