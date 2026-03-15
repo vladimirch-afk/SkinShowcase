@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="message_chats_title">Чаты</string>
+    <string name="message_empty_chats">Нет чатов</string>
+    <string name="message_chat_title">Чат</string>
+    <string name="message_new_chat">Новый чат</string>
+    <string name="message_steam_id_hint">Steam ID (17 цифр)</string>
+    <string name="message_steam_id_invalid">Steam ID должен содержать 17 цифр</string>
+    <string name="message_open_chat">Открыть чат</string>
+    <string name="message_refresh">Обновить</string>
+    <string name="message_send">Отправить</string>
+    <string name="message_back">Назад</string>
+    <string name="message_retry">Повторить</string>
+    <string name="message_input_hint">Сообщение…</string>
+    <string name="message_sending">Отправка…</string>
+</resources>
