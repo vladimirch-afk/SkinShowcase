@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -27,11 +28,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +52,8 @@ import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.screens.profile.OfferSummary
+import ru.kotlix.skinshowcase.components.NetworkImage
+import ru.kotlix.skinshowcase.data.ProfileDataProvider
 
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val CARD_BORDER_DP = 1.dp
@@ -60,6 +67,12 @@ fun OffersScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        viewModel.refreshOffers()
+        if (ProfileDataProvider.consumeOffersNeedRefresh()) {
+            viewModel.refreshOffers()
+        }
+    }
     DisposableEffect(Unit) {
         onDispose { viewModel.clearRefreshing() }
     }
@@ -67,6 +80,43 @@ fun OffersScreen(
         if (!state.isRefreshing) return@LaunchedEffect
         kotlinx.coroutines.delay(45_000)
         viewModel.clearRefreshing()
+    }
+
+    var offerIdToDelete by remember { mutableStateOf<String?>(null) }
+    if (offerIdToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { offerIdToDelete = null },
+            title = {
+                Text(
+                    text = stringResource(R.string.offers_delete_confirm_title),
+                    style = MaterialTheme.typography.titleMedium
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.offers_delete_confirm_message),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        offerIdToDelete?.let { viewModel.removeOffer(it) }
+                        offerIdToDelete = null
+                    }
+                ) {
+                    Text(
+                        stringResource(R.string.offers_delete_confirm_confirm),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { offerIdToDelete = null }) {
+                    Text(stringResource(R.string.offers_delete_confirm_cancel))
+                }
+            }
+        )
     }
 
     Column(
@@ -102,8 +152,8 @@ fun OffersScreen(
                 items(items = state.offers, key = { it.id }) { offer ->
                     OfferCard(
                         offer = offer,
-                        onClick = { onOfferClick(offer.id) },
-                        onDelete = { viewModel.removeOffer(offer.id) }
+                        onClick = { onOfferClick(offer.skinId) },
+                        onDelete = { offerIdToDelete = offer.id }
                     )
                 }
             }
@@ -159,11 +209,12 @@ private fun OfferCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
+            NetworkImage(
+                url = offer.skinImageUrl,
+                contentDescription = offer.skinName,
                 modifier = Modifier
                     .size(IMAGE_PLACEHOLDER_SIZE)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(

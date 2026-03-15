@@ -18,4 +18,9 @@
 <string name="error_data_message">Ошибка получения данных. Возможна проблема с подключением к интернету.</string>
 <string name="error_dialog_ok">ОК</string>
 <string name="error_dialog_settings">Настройки</string>
+    <string name="message_delete_message">Удалить сообщение</string>
+    <string name="message_delete_message_confirm">Удалить это сообщение?</string>
+    <string name="message_delete_chat">Удалить чат</string>
+    <string name="message_delete_chat_confirm">Удалить этот чат? История сообщений будет удалена.</string>
+    <string name="message_delete">Удалить</string>
 </resources>

@@ -96,6 +96,20 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
         updateState { it.copy(errorMessage = null) }
     }
 
+    fun deleteChat(chatId: String) {
+        launch {
+            when (val result = repository.deleteChat(chatId)) {
+                is Result.Success -> updateState {
+                    it.copy(chats = it.chats.filter { c -> c.id != chatId })
+                }
+                is Result.Error -> updateState {
+                    it.copy(errorMessage = result.throwable.message ?: "Ошибка удаления чата")
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
+
     companion object {
         const val SUPPORT_CHAT_ID = "support"
     }
@@ -103,8 +117,9 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 
 private fun supportChatItem(): ChatItem = ChatItem(
     id = ChatsListViewModel.SUPPORT_CHAT_ID,
-    title = "Поддержка",
+    nickname = "Поддержка",
     lastMessage = "",
     lastMessageTimeMillis = 0L,
-    unreadCount = 0
+    unreadCount = 0,
+    avatarUrl = "https://picsum.photos/seed/support-robot/128/128"
 )

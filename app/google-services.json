@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "373092127955",
+    "project_id": "ru-kotlix-skinshowcase",
+    "storage_bucket": "ru-kotlix-skinshowcase.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373092127955:android:07bc028f46958cd5b13026",
+        "android_client_info": {
+          "package_name": "ru.kotlix.skinshowcase"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBZvQ0yHxbXPfMBEalRyP4skGeS-3kS5Cw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

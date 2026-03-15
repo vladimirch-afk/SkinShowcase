@@ -44,6 +44,7 @@ import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
+import ru.kotlix.skinshowcase.components.NetworkImage
 
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private const val GRID_COLUMNS = 2
@@ -162,10 +163,10 @@ private fun MySkinGridCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            NetworkImage(
+                url = skin.imageUrl,
+                contentDescription = skin.name,
+                modifier = Modifier.fillMaxSize()
             )
             Box(
                 modifier = Modifier

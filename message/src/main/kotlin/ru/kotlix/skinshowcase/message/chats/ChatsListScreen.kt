@@ -2,18 +2,28 @@ package ru.kotlix.skinshowcase.message.chats
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
@@ -27,18 +37,26 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
@@ -53,7 +71,16 @@ fun ChatsListScreen(
     modifier: Modifier = Modifier
 ) {
     var showNewChatDialog by remember { mutableStateOf(false) }
+    var chatIdToDelete by remember { mutableStateOf<String?>(null) }
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.loadChats()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -84,10 +111,34 @@ fun ChatsListScreen(
         ChatsListContent(
             state = state,
             onChatClick = onChatClick,
+            onChatLongClick = { chatId -> chatIdToDelete = chatId },
             onRetry = viewModel::loadChats,
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
+        )
+    }
+
+    if (chatIdToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { chatIdToDelete = null },
+            title = { Text(stringResource(R.string.message_delete_chat)) },
+            text = { Text(stringResource(R.string.message_delete_chat_confirm)) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        chatIdToDelete?.let { viewModel.deleteChat(it) }
+                        chatIdToDelete = null
+                    }
+                ) {
+                    Text(stringResource(R.string.message_delete), color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { chatIdToDelete = null }) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
         )
     }
 
@@ -120,13 +171,16 @@ fun ChatsListScreen(
 private fun ChatsListContent(
     state: ChatsListUiState,
     onChatClick: (String) -> Unit,
+    onChatLongClick: (String) -> Unit = {},
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Всегда LazyColumn, чтобы PullToRefreshBox распознавал жест (нужен скролл).
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 12.dp)
     ) {
         when {
             state.isLoading && state.chats.isEmpty() -> {
@@ -178,14 +232,18 @@ private fun ChatsListContent(
                 ) { chat ->
                     ChatListItem(
                         chat = chat,
-                        onClick = { onChatClick(chat.id) }
+                        onClick = { onChatClick(chat.id) },
+                        onLongClick = if (chat.id != ChatsListViewModel.SUPPORT_CHAT_ID) {
+                            { onChatLongClick(chat.id) }
+                        } else {
+                            { }
+                        }
                     )
                 }
             }
         }
-        // Чтобы список всегда скроллился и PullToRefresh срабатывал.
         item {
-            Spacer(modifier = Modifier.height(400.dp))
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
@@ -239,36 +297,86 @@ private fun NewChatDialog(
     )
 }
 
+private val CHAT_CARD_SHAPE = RoundedCornerShape(16.dp)
+private val CHAT_AVATAR_SIZE = 52.dp
+
 @Composable
 private fun ChatListItem(
     chat: ChatItem,
     onClick: () -> Unit,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val displayTitle = if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID) {
+    val displayNickname = if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID) {
         stringResource(R.string.message_support_chat)
     } else {
-        chat.title
+        chat.nickname
     }
-    ListItem(
-        headlineContent = {
-            Text(
-                text = displayTitle,
-                style = MaterialTheme.typography.titleMedium
-            )
-        },
-        supportingContent = {
-            Text(
-                text = chat.lastMessage,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1
-            )
-        },
+    Card(
+        onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-    )
+            .pointerInput(chat.id) {
+                detectTapGestures(onLongPress = { onLongClick() })
+            },
+        shape = CHAT_CARD_SHAPE,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(CHAT_AVATAR_SIZE)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = androidx.compose.ui.Alignment.Center
+            ) {
+                if (!chat.avatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = chat.avatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = displayNickname,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (chat.id != ChatsListViewModel.SUPPORT_CHAT_ID) {
+                    Text(
+                        text = chat.id,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                }
+                Text(
+                    text = chat.lastMessage.ifEmpty { " " },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
 }
 
 @Preview(showBackground = true)

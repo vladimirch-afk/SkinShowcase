@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.KeyboardActions
@@ -28,6 +29,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,8 +46,11 @@ import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.message.R
 import ru.kotlix.skinshowcase.message.domain.MessageItem
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -88,11 +95,13 @@ fun ChatScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            var messageIdToDelete by remember { mutableStateOf<String?>(null) }
             LazyColumn(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(top = 8.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 reverseLayout = true
             ) {
@@ -100,8 +109,33 @@ fun ChatScreen(
                     items = state.messages.reversed(),
                     key = { it.id }
                 ) { message ->
-                    MessageBubble(message = message)
+                    MessageBubble(
+                        message = message,
+                        onLongClick = { messageIdToDelete = message.id }
+                    )
                 }
+            }
+            if (messageIdToDelete != null) {
+                AlertDialog(
+                    onDismissRequest = { messageIdToDelete = null },
+                    title = { Text(stringResource(R.string.message_delete_message)) },
+                    text = { Text(stringResource(R.string.message_delete_message_confirm)) },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                messageIdToDelete?.let { viewModel.deleteMessage(it) }
+                                messageIdToDelete = null
+                            }
+                        ) {
+                            Text(stringResource(R.string.message_delete), color = MaterialTheme.colorScheme.error)
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { messageIdToDelete = null }) {
+                            Text(stringResource(android.R.string.cancel))
+                        }
+                    }
+                )
             }
             ChatInputRow(
                 draft = state.messageDraft,
@@ -148,6 +182,7 @@ private fun ChatInputRow(
             onValueChange = onDraftChange,
             modifier = Modifier.weight(1f),
             placeholder = { Text(stringResource(R.string.message_input_hint)) },
+            shape = RoundedCornerShape(24.dp),
             maxLines = 4,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
             keyboardActions = KeyboardActions(onSend = { onSend(); keyboardController?.hide() }),
@@ -175,9 +210,10 @@ private fun ChatInputRow(
 @Composable
 private fun MessageBubble(
     message: MessageItem,
+    onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val alignment = if (message.isOutgoing) Alignment.End else Alignment.Start
+    val contentAlignment = if (message.isOutgoing) Alignment.CenterEnd else Alignment.CenterStart
     val backgroundColor = if (message.isOutgoing) {
         MaterialTheme.colorScheme.primaryContainer
     } else {
@@ -185,7 +221,12 @@ private fun MessageBubble(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = { },
+                onLongClick = onLongClick
+            ),
         horizontalArrangement = if (message.isOutgoing) Arrangement.End else Arrangement.Start
     ) {
         Box(
@@ -194,7 +235,7 @@ private fun MessageBubble(
                 .background(backgroundColor)
                 .padding(horizontal = 12.dp, vertical = 8.dp)
                 .align(Alignment.CenterVertically),
-            contentAlignment = alignment as Alignment
+            contentAlignment = contentAlignment
         ) {
             Text(
                 text = message.text,

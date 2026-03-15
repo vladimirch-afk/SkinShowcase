@@ -30,6 +30,7 @@ import ru.kotlix.skinshowcase.onboarding.R
 fun OnboardingScreen(
     onLoginSuccess: () -> Unit = {},
     onSteamLoginClick: () -> Unit = {},
+    onLoginAttempt: (method: String) -> Unit = {},
     viewModel: OnboardingViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -84,7 +85,10 @@ fun OnboardingScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         Button(
-            onClick = { viewModel.onLoginClick(onSuccess = onLoginSuccess) },
+            onClick = {
+                onLoginAttempt("form")
+                viewModel.onLoginClick(onSuccess = onLoginSuccess)
+            },
             modifier = Modifier.fillMaxWidth(),
             enabled = !state.isLoading
         ) {

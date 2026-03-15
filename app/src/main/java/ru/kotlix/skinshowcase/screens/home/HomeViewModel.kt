@@ -5,7 +5,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.BaseViewModel
+import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinFilter
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
 
@@ -40,6 +42,9 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                     }
                 }
             } catch (e: Throwable) {
+                if (e !is CancellationException) {
+                    AppAnalytics.reportErrorWithMessage("loadSkins", e)
+                }
                 withContext(NonCancellable) {
                     withContext(Dispatchers.Main.immediate) {
                         updateState {
@@ -90,6 +95,23 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
 
     fun setSortOption(option: SortOption) {
         updateState { it.copy(sortOption = option) }
+    }
+
+    fun toggleFavorite(skin: Skin) {
+        launch {
+            val repo = SkinsProvider.repository
+            val added = !skin.isFavorite
+            if (skin.isFavorite) repo.removeFromFavorites(skin.id)
+            else repo.addToFavorites(skin)
+            updateState { state ->
+                state.copy(
+                    skins = state.skins.map {
+                        if (it.id == skin.id) it.copy(isFavorite = !it.isFavorite) else it
+                    }
+                )
+            }
+            AppAnalytics.reportEvent(if (added) "favorite_added" else "favorite_removed", mapOf("skin_id" to skin.id))
+        }
     }
 
     // --- данные-заглушки (отключены, данные через api-gateway) ---

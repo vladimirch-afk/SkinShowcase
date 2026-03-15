@@ -5,6 +5,7 @@ package ru.kotlix.skinshowcase.screens.profile
  */
 data class OfferSummary(
     val id: String,
+    val skinId: String,
     val skinName: String,
     val skinImageUrl: String? = null,
     val priceRub: Double? = null
@@ -17,4 +18,13 @@ data class DealSummary(
     val id: String,
     val summary: String,
     val counterpartName: String? = null
+)
+
+/**
+ * Данные продавца оффера (для чужого оффера).
+ */
+data class SellerInfo(
+    val nickname: String,
+    val steamId: String,
+    val tradeLink: String? = null
 )

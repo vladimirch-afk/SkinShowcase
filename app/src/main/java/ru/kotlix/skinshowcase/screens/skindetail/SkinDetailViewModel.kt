@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.data.ProfileDataProvider
 import ru.kotlix.skinshowcase.navigation.NavRoutes
 
 class SkinDetailViewModel(
@@ -16,12 +18,42 @@ class SkinDetailViewModel(
 ) : ViewModel() {
 
     private val skinId: String = savedStateHandle.get<String>(NavRoutes.SKIN_DETAIL_ID_ARG) ?: ""
+    private val isOwnOffer: Boolean = savedStateHandle.get<Boolean>(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) ?: false
+    private val isCreatingOffer: Boolean = savedStateHandle.get<Boolean>(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) ?: false
 
-    private val _uiState = MutableStateFlow(SkinDetailUiState())
+    private val _uiState = MutableStateFlow(SkinDetailUiState(isCreatingOffer = isCreatingOffer))
     val uiState: StateFlow<SkinDetailUiState> = _uiState.asStateFlow()
 
     init {
         loadSkin(skinId)
+        if (isOwnOffer) loadSeller() else loadOtherSeller()
+    }
+
+    private fun loadSeller() {
+        viewModelScope.launch {
+            val profile = ProfileDataProvider.getProfileState()
+            _uiState.update {
+                it.copy(
+                    sellerNickname = profile.steamNickname.ifBlank { null },
+                    sellerSteamId = profile.steamId
+                )
+            }
+        }
+    }
+
+    private fun loadOtherSeller() {
+        viewModelScope.launch {
+            val seller = ProfileDataProvider.getSellerForSkin(skinId)
+            if (seller != null) {
+                _uiState.update {
+                    it.copy(
+                        sellerNickname = seller.nickname,
+                        sellerSteamId = seller.steamId,
+                        sellerTradeLink = seller.tradeLink
+                    )
+                }
+            }
+        }
     }
 
     private fun loadSkin(id: String) {
@@ -46,6 +78,7 @@ class SkinDetailViewModel(
                     }
                 },
                 onFailure = { e ->
+                    AppAnalytics.reportErrorWithMessage("loadSkin($id)", e)
                     _uiState.update {
                         it.copy(
                             skin = null,
@@ -62,6 +95,39 @@ class SkinDetailViewModel(
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }
+    }
+
+    fun createOffer() {
+        if (skinId.isBlank()) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmittingOffer = true) }
+            val success = ProfileDataProvider.createOffer(skinId)
+            _uiState.update {
+                it.copy(
+                    isSubmittingOffer = false,
+                    navigateToMyOffers = success
+                )
+            }
+            if (success) AppAnalytics.reportEvent("offer_created", mapOf("skin_id" to skinId))
+        }
+    }
+
+    fun clearNavigateToMyOffers() {
+        _uiState.update { it.copy(navigateToMyOffers = false) }
+    }
+
+    fun toggleFavorite() {
+        val s = _uiState.value.skin ?: return
+        viewModelScope.launch {
+            val repo = SkinsProvider.repository
+            val added = !s.isFavorite
+            if (s.isFavorite) repo.removeFromFavorites(s.id)
+            else repo.addToFavorites(s)
+            _uiState.update {
+                it.copy(skin = it.skin?.copy(isFavorite = !it.skin!!.isFavorite))
+            }
+            AppAnalytics.reportEvent(if (added) "favorite_added" else "favorite_removed", mapOf("skin_id" to s.id))
+        }
     }
 
     // --- данные-заглушки (отключены, загрузка через api-gateway) ---

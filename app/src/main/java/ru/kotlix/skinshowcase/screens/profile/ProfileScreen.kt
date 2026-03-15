@@ -1,6 +1,7 @@
 package ru.kotlix.skinshowcase.screens.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -67,6 +68,7 @@ import ru.kotlix.skinshowcase.designsystem.theme.GoldAccent
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
+import ru.kotlix.skinshowcase.components.NetworkImage
 
 private val CARD_SHAPE = RoundedCornerShape(16.dp)
 private val CARD_PADDING = 16.dp
@@ -78,6 +80,7 @@ fun ProfileScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
+    onNavigateToTradeLink: () -> Unit = {},
     onViewAllOffers: () -> Unit = {},
     onCreateOffer: () -> Unit = {},
     onViewFullHistory: () -> Unit = {},
@@ -89,10 +92,13 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    LaunchedEffect(Unit) {
+        viewModel.refreshProfile()
+    }
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshPrivacy()
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.refreshProfile()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
@@ -121,9 +127,16 @@ fun ProfileScreen(
         ) {
         ProfileHeaderCard(
             steamNickname = state.steamNickname,
-            steamAvatarUrl = state.steamAvatarUrl
+            steamAvatarUrl = state.steamAvatarUrl,
+            steamId = state.steamId
         )
         Spacer(modifier = Modifier.height(16.dp))
+
+        TradeLinkCard(
+            tradeLink = state.tradeLink,
+            onClick = onNavigateToTradeLink
+        )
+        Spacer(modifier = Modifier.height(12.dp))
 
         ActiveOffersCard(
             offers = state.activeOffers,
@@ -183,9 +196,50 @@ fun ProfileScreen(
 }
 
 @Composable
+private fun TradeLinkCard(
+    tradeLink: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val hasLink = !tradeLink.isNullOrBlank()
+    ProfileSectionCard(
+        title = stringResource(R.string.profile_trade_link),
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        if (!hasLink) {
+            Text(
+                text = stringResource(R.string.profile_trade_link_not_set),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.dp,
+                        MaterialTheme.colorScheme.outlineVariant,
+                        RoundedCornerShape(8.dp)
+                    )
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = tradeLink,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun ProfileHeaderCard(
     steamNickname: String,
     steamAvatarUrl: String?,
+    steamId: String?,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -212,16 +266,13 @@ private fun ProfileHeaderCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
+                NetworkImage(
+                    url = steamAvatarUrl,
+                    contentDescription = null,
                     modifier = Modifier
                         .size(AVATAR_SIZE)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    if (steamAvatarUrl != null) {
-                        // Coil/Glide image here when integrated
-                    }
-                }
+                )
                 Column {
                     Text(
                         text = stringResource(R.string.profile_your_profile),
@@ -235,6 +286,14 @@ private fun ProfileHeaderCard(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
+                    if (!steamId.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "${stringResource(R.string.profile_steam_id)}: $steamId",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         }
@@ -338,11 +397,12 @@ private fun OfferRowContent(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Box(
+        NetworkImage(
+            url = offer.skinImageUrl,
+            contentDescription = offer.skinName,
             modifier = Modifier
                 .size(SKIN_THUMB_SIZE)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(

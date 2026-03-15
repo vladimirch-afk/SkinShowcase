@@ -1,17 +1,19 @@
 package ru.kotlix.skinshowcase.screens.profile
 
 import ru.kotlix.skinshowcase.core.BaseViewModel
+import ru.kotlix.skinshowcase.data.ProfileDataProvider
 import ru.kotlix.skinshowcase.settings.PrivacyPreferences
 
 class ProfileViewModel : BaseViewModel<ProfileUiState>() {
 
     override fun initialState(): ProfileUiState = ProfileUiState(
         steamNickname = "",
+        steamAvatarUrl = null,
+        steamId = null,
         activeOffers = emptyList(),
         dealHistory = emptyList(),
         showProfile = PrivacyPreferences.getShowProfile(),
         showOffers = PrivacyPreferences.getShowOffers()
-        // данные-заглушки отключены — профиль/офферы/сделки через api-gateway (TODO: эндпоинты)
     )
 
     fun refreshPrivacy() {
@@ -28,8 +30,9 @@ class ProfileViewModel : BaseViewModel<ProfileUiState>() {
             updateState { it.copy(isRefreshing = true) }
             try {
                 refreshPrivacy()
-                kotlinx.coroutines.delay(300)
-            } finally {
+                val profileState = ProfileDataProvider.getProfileState()
+                updateState { profileState.copy(isRefreshing = false) }
+            } catch (_: Exception) {
                 updateState { it.copy(isRefreshing = false) }
             }
         }

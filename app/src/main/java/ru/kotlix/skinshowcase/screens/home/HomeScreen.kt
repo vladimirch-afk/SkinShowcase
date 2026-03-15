@@ -37,6 +37,9 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -72,6 +75,7 @@ import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
+import ru.kotlix.skinshowcase.components.NetworkImage
 
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val CARD_BORDER_DP = 1.dp
@@ -189,7 +193,8 @@ fun HomeScreen(
                 ) { skin ->
                     SkinListingCard(
                         skin = skin,
-                        onClick = { onSkinClick(skin.id) }
+                        onClick = { onSkinClick(skin.id) },
+                        onFavoriteClick = { viewModel.toggleFavorite(skin) }
                     )
                 }
                 // Чтобы список всегда скроллился и PullToRefresh срабатывал.
@@ -441,7 +446,8 @@ private fun HomeTopBar(
 @Composable
 private fun SkinListingCard(
     skin: Skin,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onFavoriteClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
@@ -459,7 +465,13 @@ private fun SkinListingCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SkinImagePlaceholder(modifier = Modifier.size(IMAGE_PLACEHOLDER_SIZE))
+            NetworkImage(
+                url = skin.imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(IMAGE_PLACEHOLDER_SIZE)
+                    .clip(RoundedCornerShape(8.dp))
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = skin.name,
@@ -475,23 +487,18 @@ private fun SkinListingCard(
                     color = PriceGreen
                 )
             }
-            Box(
-                modifier = Modifier
-                    .size(AVATAR_SIZE)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-            )
+            IconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                    contentDescription = if (skin.isFavorite) stringResource(R.string.favorites_remove) else stringResource(R.string.favorites_add),
+                    tint = if (skin.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
-}
-
-@Composable
-private fun SkinImagePlaceholder(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    )
 }
 
 private fun filterSkinsByQuery(skins: List<Skin>, query: String): List<Skin> {

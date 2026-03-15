@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -22,9 +23,21 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "MESSAGING_DEBUG_TOKEN", "\"\"")
+            buildConfigField("boolean", "USE_MOCK_SERVER", "true")
+            buildConfigField(
+                "String",
+                "APPMETRICA_API_KEY",
+                "\"${project.findProperty("APPMETRICA_API_KEY") ?: ""}\""
+            )
         }
         release {
+            buildConfigField("boolean", "USE_MOCK_SERVER", "false")
             buildConfigField("String", "MESSAGING_DEBUG_TOKEN", "\"\"")
+            buildConfigField(
+                "String",
+                "APPMETRICA_API_KEY",
+                "\"${project.findProperty("APPMETRICA_API_KEY") ?: ""}\""
+            )
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -49,6 +62,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":designsystem"))
     implementation(project(":message"))
+    implementation(project(":mock"))
     implementation(project(":onboarding"))
 
     implementation(libs.androidx.core)
@@ -65,6 +79,12 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.coil.compose)
+    implementation(libs.appmetrica.analytics)
+    implementation(libs.appmetrica.push)
+    implementation(libs.androidx.legacy.support.v4)
+    implementation(libs.firebase.messaging)
+    implementation(libs.play.services.base)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

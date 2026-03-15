@@ -15,6 +15,7 @@ import ru.kotlix.skinshowcase.onboarding.SteamAuthWebViewScreen
 @Composable
 fun OnboardingRoot(
     onAuthorized: () -> Unit,
+    onLoginAttempt: (method: String) -> Unit = {},
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
     var showSteamWebView by remember { mutableStateOf(false) }
@@ -30,7 +31,11 @@ fun OnboardingRoot(
     } else {
         OnboardingScreen(
             onLoginSuccess = onAuthorized,
-            onSteamLoginClick = { showSteamWebView = true },
+            onSteamLoginClick = {
+                onLoginAttempt("steam")
+                showSteamWebView = true
+            },
+            onLoginAttempt = onLoginAttempt,
             modifier = modifier
         )
     }

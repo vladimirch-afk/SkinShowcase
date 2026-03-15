@@ -8,7 +8,14 @@
 <string name="screen_skins">Скины</string>
 <string name="screen_offers">Офферы</string>
 <string name="offers_delete">Удалить оффер</string>
+<string name="offers_delete_confirm_title">Удалить оффер?</string>
+<string name="offers_delete_confirm_message">Оффер будет удалён из списка. Это действие нельзя отменить.</string>
+<string name="offers_delete_confirm_cancel">Отмена</string>
+<string name="offers_delete_confirm_confirm">Удалить</string>
 <string name="screen_favorites">Избранное</string>
+    <string name="favorites_add">В избранное</string>
+    <string name="favorites_remove">Убрать из избранного</string>
+    <string name="favorites_empty">В избранном пока ничего нет. Добавьте скины со главной или со страницы оффера.</string>
     <string name="screen_profile">Профиль</string>
     <string name="screen_skin_detail">Детали скина</string>
     <string name="screen_settings">Настройки</string>
@@ -31,6 +38,13 @@
     <string name="home_create_offer">Создать оффер</string>
     <string name="create_offer_select_skin_title">Мои скины</string>
     <string name="profile_your_profile">Ваш профиль</string>
+    <string name="profile_steam_id">Steam ID</string>
+    <string name="profile_trade_link">Ссылка для обмена</string>
+    <string name="profile_trade_link_not_set">Установите ссылку для обмена</string>
+    <string name="trade_link_screen_title">Ссылка для обмена</string>
+    <string name="trade_link_hint">Вставьте ссылку из Steam</string>
+    <string name="trade_link_save">Сохранить</string>
+    <string name="trade_link_delete">Удалить ссылку</string>
     <string name="profile_active_offers">Активные офферы</string>
     <string name="profile_trade_history">История сделок</string>
     <string name="profile_reputation">Репутация</string>
@@ -51,6 +65,7 @@
 <string name="profile_support_project_cta">Поддержать проект</string>
 <string name="profile_support_project_hint">Безвозмездная поддержка разработки</string>
 <string name="skin_detail_suggest_trade">Предложить обмен</string>
+    <string name="skin_detail_create_offer">Создать оффер</string>
 <string name="skin_detail_float">Флот</string>
 <string name="skin_detail_stickers">Стикеры</string>
 <string name="skin_detail_collection">Коллекция</string>
@@ -61,7 +76,14 @@
 <string name="skin_detail_type">Тип</string>
 <string name="skin_detail_pattern">Паттерн</string>
 <string name="skin_detail_seller">Продавец</string>
-<string name="skin_detail_no_value">—</string>
+    <string name="skin_detail_no_value">—</string>
+    <string name="skin_detail_go_to_steam_title">Перейти в Steam?</string>
+    <string name="skin_detail_go_to_steam_message">Открыть страницу пользователя в Steam?</string>
+    <string name="skin_detail_go_to_steam_open">Перейти</string>
+    <string name="skin_detail_no_trade_link_title">Нет ссылки на обмен</string>
+    <string name="skin_detail_no_trade_link_message">У пользователя не установлена ссылка на обмен. Можно перейти только на его страницу в Steam.</string>
+    <string name="skin_detail_go_to_profile">Перейти на страницу</string>
+    <string name="skin_detail_open_chat">Написать продавцу</string>
 
 <string name="filter_title">Фильтр</string>
 <string name="filter_apply">Применить</string>

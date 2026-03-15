@@ -7,8 +7,19 @@ object DatabaseProvider {
 
     private const val DB_NAME = "skins_showcase.db"
 
-    fun create(context: Context): AppDatabase =
-        Room.databaseBuilder(context.applicationContext, AppDatabase::class.java, DB_NAME)
-            .fallbackToDestructiveMigration()
-            .build()
+    @Volatile
+    private var instance: AppDatabase? = null
+
+    fun create(context: Context): AppDatabase {
+        return instance ?: synchronized(this) {
+            instance ?: Room.databaseBuilder(
+                context.applicationContext,
+                AppDatabase::class.java,
+                DB_NAME
+            )
+                .fallbackToDestructiveMigration()
+                .build()
+                .also { instance = it }
+        }
+    }
 }

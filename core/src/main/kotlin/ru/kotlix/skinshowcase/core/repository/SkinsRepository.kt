@@ -4,6 +4,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import retrofit2.HttpException
 import ru.kotlix.skinshowcase.core.database.dao.FavoriteSkinDao
+import ru.kotlix.skinshowcase.core.database.dao.SkinCacheDao
+import ru.kotlix.skinshowcase.core.database.mapper.toCachedSkinEntity
+import ru.kotlix.skinshowcase.core.database.mapper.toSkinDto
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain
 import ru.kotlix.skinshowcase.core.domain.mapper.toFavoriteEntity
@@ -11,11 +14,12 @@ import ru.kotlix.skinshowcase.core.network.ApiService
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain as dtoToDomain
 
 /**
- * Single source of truth: remote API + local favorites (Room).
+ * Single source of truth: remote API + local cache (Room) + favorites (Room).
  */
 class SkinsRepository(
     private val api: ApiService,
-    private val favoriteDao: FavoriteSkinDao
+    private val favoriteDao: FavoriteSkinDao,
+    private val skinCacheDao: SkinCacheDao
 ) {
 
     fun observeFavorites(): Flow<List<Skin>> =
@@ -23,17 +27,34 @@ class SkinsRepository(
 
     suspend fun getSkinsFromApi(): List<Skin> {
         val favoriteIds = favoriteDao.getAllIds().toSet()
-        val remote = api.getSkins()
-        return remote.map { dto -> dto.dtoToDomain(isFavorite = dto.id in favoriteIds) }
+        val remote = runCatching { api.getSkins() }
+        return when {
+            remote.isSuccess -> {
+                val list = remote.getOrThrow()
+                skinCacheDao.deleteAll()
+                skinCacheDao.insertAll(list.mapIndexed { index, dto -> dto.toCachedSkinEntity(orderIndex = index) })
+                list.map { dto -> dto.dtoToDomain(isFavorite = dto.id in favoriteIds) }
+            }
+            else -> {
+                val cached = skinCacheDao.getAll()
+                cached.map { it.toSkinDto().dtoToDomain(isFavorite = it.id in favoriteIds) }
+            }
+        }
     }
 
     suspend fun getSkinByIdFromApi(id: String): Skin? {
-        return try {
-            val dto = api.getSkinById(id)
-            val isFav = favoriteDao.getById(id) != null
-            dto.dtoToDomain(isFavorite = isFav)
-        } catch (e: HttpException) {
-            if (e.code() == 404) null else throw e
+        val isFav = favoriteDao.getById(id) != null
+        val fromApi = runCatching { api.getSkinById(id) }
+        return when {
+            fromApi.isSuccess -> {
+                val dto = fromApi.getOrThrow()
+                skinCacheDao.insert(dto.toCachedSkinEntity(orderIndex = 0))
+                dto.dtoToDomain(isFavorite = isFav)
+            }
+            else -> {
+                val cached = skinCacheDao.getById(id) ?: return null
+                cached.toSkinDto().dtoToDomain(isFavorite = isFav)
+            }
         }
     }
 

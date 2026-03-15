@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.kotlix.skinshowcase.core.Result
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
+import ru.kotlix.skinshowcase.message.chats.ChatsListViewModel
 import ru.kotlix.skinshowcase.message.domain.MessageItem
 import ru.kotlix.skinshowcase.message.domain.toMessageItem
 
@@ -21,7 +22,9 @@ class ChatViewModel(
     private val repository = MessagingProvider.repository
 
     private val _uiState = MutableStateFlow(
-        ChatUiState(chatTitle = "Чат $chatId")
+        ChatUiState(
+            chatTitle = if (chatId == ChatsListViewModel.SUPPORT_CHAT_ID) "Поддержка" else "Чат $chatId"
+        )
     )
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
@@ -82,6 +85,20 @@ class ChatViewModel(
     }
 
     fun getChatId(): String = chatId
+
+    fun deleteMessage(messageId: String) {
+        viewModelScope.launch {
+            when (val result = repository.deleteMessage(chatId, messageId)) {
+                is Result.Success -> _uiState.update {
+                    it.copy(messages = it.messages.filter { m -> m.id != messageId })
+                }
+                is Result.Error -> _uiState.update {
+                    it.copy(errorMessage = result.throwable.message ?: "Ошибка удаления")
+                }
+                is Result.Loading -> { }
+            }
+        }
+    }
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }

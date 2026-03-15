@@ -1,8 +1,10 @@
 package ru.kotlix.skinshowcase.screens.skindetail
 
 import android.content.Intent
+import android.net.Uri
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,14 +24,23 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -44,12 +55,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
+import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
+import ru.kotlix.skinshowcase.components.NetworkImage
 
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val IMAGE_HEIGHT = 200.dp
@@ -61,12 +74,25 @@ private val COLUMN_SPACING = 8.dp
 fun SkinDetailScreen(
     skinId: String,
     isOwnOffer: Boolean = false,
+    isCreatingOffer: Boolean = false,
     onBack: () -> Unit,
+    onOfferCreated: () -> Unit = {},
+    onOpenChatWithSeller: (String) -> Unit = {},
     viewModel: SkinDetailViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val skin = state.skin
+    val context = LocalContext.current
+    var showGoToSteamProfileDialog by remember { mutableStateOf(false) }
+    var showNoTradeLinkWarning by remember { mutableStateOf(false) }
+
+    androidx.compose.runtime.LaunchedEffect(state.navigateToMyOffers) {
+        if (state.navigateToMyOffers) {
+            onOfferCreated()
+            viewModel.clearNavigateToMyOffers()
+        }
+    }
 
     Column(
         modifier = modifier
@@ -83,6 +109,17 @@ fun SkinDetailScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface
                     )
+                }
+            },
+            actions = {
+                if (!isOwnOffer && !isCreatingOffer && skin != null) {
+                    IconButton(onClick = { viewModel.toggleFavorite() }) {
+                        Icon(
+                            imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                            contentDescription = if (skin.isFavorite) stringResource(R.string.favorites_remove) else stringResource(R.string.favorites_add),
+                            tint = if (skin.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -127,12 +164,13 @@ fun SkinDetailScreen(
                     androidx.compose.material3.CircularProgressIndicator(Modifier.padding(24.dp))
                 }
             } else {
-            Box(
+            NetworkImage(
+                url = skin?.imageUrl,
+                contentDescription = skin?.name,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(IMAGE_HEIGHT)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -147,7 +185,12 @@ fun SkinDetailScreen(
             Spacer(modifier = Modifier.height(24.dp))
 
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (state.sellerSteamId != null) Modifier.clickable { showGoToSteamProfileDialog = true }
+                        else Modifier
+                    ),
                 shape = CARD_SHAPE,
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -172,18 +215,72 @@ fun SkinDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "@Seller",
+                            text = state.sellerNickname ?: "@Seller",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
+                        state.sellerSteamId?.let { steamId ->
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = steamId,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                }
+            }
+            if (!isOwnOffer && !state.isCreatingOffer && state.sellerSteamId != null) {
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { onOpenChatWithSeller(state.sellerSteamId!!) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(stringResource(R.string.skin_detail_open_chat))
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
 
-            if (!isOwnOffer) {
+            if (state.isCreatingOffer) {
                 Button(
-                    onClick = { },
+                    onClick = { viewModel.createOffer() },
+                    enabled = !state.isSubmittingOffer,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                colors = listOf(PurpleBlueGradientStart, PurpleBlueGradientEnd)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                    contentPadding = ButtonDefaults.ContentPadding
+                ) {
+                    if (state.isSubmittingOffer) {
+                        androidx.compose.material3.CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = Color.White
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.skin_detail_create_offer),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                    }
+                }
+            } else if (!isOwnOffer) {
+                Button(
+                    onClick = {
+                        val link = state.sellerTradeLink
+                        if (!link.isNullOrBlank()) {
+                            AppAnalytics.reportEvent("trade_link_open", mapOf("skin_id" to skinId))
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                        } else {
+                            showNoTradeLinkWarning = true
+                        }
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -203,6 +300,60 @@ fun SkinDetailScreen(
                 }
             }
             }
+        }
+        if (showGoToSteamProfileDialog && state.sellerSteamId != null) {
+            AlertDialog(
+                onDismissRequest = { showGoToSteamProfileDialog = false },
+                title = { Text(stringResource(R.string.skin_detail_go_to_steam_title)) },
+                text = { Text(stringResource(R.string.skin_detail_go_to_steam_message)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            state.sellerSteamId?.let { steamId ->
+                                AppAnalytics.reportEvent("steam_profile_open", mapOf("steam_id" to steamId))
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/$steamId"))
+                                )
+                            }
+                            showGoToSteamProfileDialog = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.skin_detail_go_to_steam_open))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showGoToSteamProfileDialog = false }) {
+                        Text(stringResource(R.string.offers_delete_confirm_cancel))
+                    }
+                }
+            )
+        }
+        if (showNoTradeLinkWarning) {
+            AlertDialog(
+                onDismissRequest = { showNoTradeLinkWarning = false },
+                title = { Text(stringResource(R.string.skin_detail_no_trade_link_title)) },
+                text = { Text(stringResource(R.string.skin_detail_no_trade_link_message)) },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            state.sellerSteamId?.let { steamId ->
+                                AppAnalytics.reportEvent("steam_profile_open", mapOf("steam_id" to steamId))
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://steamcommunity.com/profiles/$steamId"))
+                                )
+                            }
+                            showNoTradeLinkWarning = false
+                        }
+                    ) {
+                        Text(stringResource(R.string.skin_detail_go_to_profile))
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showNoTradeLinkWarning = false }) {
+                        Text(stringResource(R.string.error_dialog_ok))
+                    }
+                }
+            )
         }
     }
 }

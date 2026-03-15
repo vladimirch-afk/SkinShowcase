@@ -3,6 +3,8 @@ package ru.kotlix.skinshowcase.screens.profile
 data class ProfileUiState(
     val steamAvatarUrl: String? = null,
     val steamNickname: String = "",
+    val steamId: String? = null,
+    val tradeLink: String? = null,
     val activeOffers: List<OfferSummary> = emptyList(),
     val dealHistory: List<DealSummary> = emptyList(),
     val showProfile: Boolean = true,

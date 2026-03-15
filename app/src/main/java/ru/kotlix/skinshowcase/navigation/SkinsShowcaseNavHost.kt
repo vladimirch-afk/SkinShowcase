@@ -7,6 +7,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
@@ -18,15 +19,23 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import ru.kotlix.skinshowcase.navigation.chatRoute
+import ru.kotlix.skinshowcase.navigation.documentRoute
 import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.screens.about.AboutScreen
+import ru.kotlix.skinshowcase.screens.dealhistory.DealHistoryScreen
+import ru.kotlix.skinshowcase.screens.document.DocumentViewerScreen
 import ru.kotlix.skinshowcase.screens.home.HomeScreen
 import ru.kotlix.skinshowcase.message.chats.ChatsListScreen
 import ru.kotlix.skinshowcase.message.chat.ChatScreen
 import ru.kotlix.skinshowcase.screens.profile.ProfileScreen
 import ru.kotlix.skinshowcase.screens.favorites.FavoritesScreen
+import ru.kotlix.skinshowcase.screens.tradelink.TradeLinkScreen
 import ru.kotlix.skinshowcase.screens.settings.SettingsScreen
+import ru.kotlix.skinshowcase.message.chats.ChatsListViewModel
 import ru.kotlix.skinshowcase.screens.createoffer.CreateOfferSelectSkinScreen
+import ru.kotlix.skinshowcase.data.ProfileDataProvider
+import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.screens.offers.OffersScreen
 import ru.kotlix.skinshowcase.screens.skindetail.SkinDetailScreen
 
@@ -46,6 +55,10 @@ fun SkinsShowcaseNavHost(
         TabRoutes.MESSAGES,
         TabRoutes.PROFILE
     )
+
+    LaunchedEffect(currentRoute) {
+        currentRoute?.let { route -> AppAnalytics.reportScreen(route) }
+    }
 
     Scaffold(
         modifier = modifier,
@@ -111,6 +124,7 @@ fun SkinsShowcaseNavHost(
                     onNavigateToSettings = { navController.navigate(OverlayRoutes.SETTINGS) },
                     onNavigateToAbout = { navController.navigate(OverlayRoutes.ABOUT) },
                     onNavigateToFavorites = { navController.navigate(OverlayRoutes.FAVORITES) },
+                    onNavigateToTradeLink = { navController.navigate(OverlayRoutes.TRADE_LINK) },
                     onViewAllOffers = {
                         navController.navigate(TabRoutes.SKINS) {
                             popUpTo(navController.graph.findStartDestination().id) { saveState = true }
@@ -126,6 +140,11 @@ fun SkinsShowcaseNavHost(
                         }
                         navController.navigate(OverlayRoutes.CREATE_OFFER)
                     },
+                    onContactSupport = { navController.navigate(chatRoute(ChatsListViewModel.SUPPORT_CHAT_ID)) },
+                    onViewFullHistory = { navController.navigate(OverlayRoutes.DEAL_HISTORY) },
+                    onDocumentClick = { documentId ->
+                        navController.navigate(documentRoute(documentId))
+                    },
                     onLogout = onLogout
                 )
             }
@@ -134,15 +153,28 @@ fun SkinsShowcaseNavHost(
                 route = OverlayRoutes.SKIN_DETAIL,
                 arguments = listOf(
                     navArgument(NavRoutes.SKIN_DETAIL_ID_ARG) { type = NavType.StringType },
-                    navArgument(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) { type = NavType.BoolType; defaultValue = false }
+                    navArgument(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) { type = NavType.BoolType; defaultValue = false },
+                    navArgument(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) { type = NavType.BoolType; defaultValue = false }
                 )
             ) { backStackEntry ->
                 val skinId = backStackEntry.arguments?.getString(NavRoutes.SKIN_DETAIL_ID_ARG) ?: ""
                 val isOwnOffer = backStackEntry.arguments?.getBoolean(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) ?: false
+                val isCreatingOffer = backStackEntry.arguments?.getBoolean(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) ?: false
                 SkinDetailScreen(
                     skinId = skinId,
                     isOwnOffer = isOwnOffer,
-                    onBack = { navController.popBackStack() }
+                    isCreatingOffer = isCreatingOffer,
+                    onBack = { navController.popBackStack() },
+                    onOfferCreated = {
+                        ProfileDataProvider.markOffersNeedRefresh()
+                        navController.popBackStack()
+                        navController.navigate(TabRoutes.SKINS) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    onOpenChatWithSeller = { chatId -> navController.navigate(chatRoute(chatId)) }
                 )
             }
             composable(
@@ -158,6 +190,9 @@ fun SkinsShowcaseNavHost(
             composable(OverlayRoutes.SETTINGS) {
                 SettingsScreen(onBack = { navController.popBackStack() })
             }
+            composable(OverlayRoutes.TRADE_LINK) {
+                TradeLinkScreen(onBack = { navController.popBackStack() })
+            }
             composable(OverlayRoutes.FAVORITES) {
                 FavoritesScreen(
                     onSkinClick = { skinId -> navController.navigate(skinDetailRoute(skinId)) },
@@ -168,7 +203,7 @@ fun SkinsShowcaseNavHost(
                 CreateOfferSelectSkinScreen(
                     onBack = { navController.popBackStack() },
                     onSkinClick = { skinId ->
-                        navController.navigate(skinDetailRoute(skinId, isOwnOffer = true)) {
+                        navController.navigate(skinDetailRoute(skinId, isOwnOffer = true, isCreatingOffer = true)) {
                             popUpTo(OverlayRoutes.CREATE_OFFER) { inclusive = true }
                         }
                     }
@@ -176,6 +211,19 @@ fun SkinsShowcaseNavHost(
             }
             composable(OverlayRoutes.ABOUT) {
                 AboutScreen(onBack = { navController.popBackStack() })
+            }
+            composable(OverlayRoutes.DEAL_HISTORY) {
+                DealHistoryScreen(onBack = { navController.popBackStack() })
+            }
+            composable(
+                route = OverlayRoutes.DOCUMENT,
+                arguments = listOf(navArgument(NavRoutes.DOCUMENT_ID_ARG) { type = NavType.StringType })
+            ) { backStackEntry ->
+                val documentId = backStackEntry.arguments?.getString(NavRoutes.DOCUMENT_ID_ARG) ?: ""
+                DocumentViewerScreen(
+                    documentId = documentId,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }
