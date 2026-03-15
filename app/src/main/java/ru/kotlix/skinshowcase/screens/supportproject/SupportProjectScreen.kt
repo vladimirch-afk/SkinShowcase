@@ -1,8 +1,6 @@
-package ru.kotlix.skinshowcase.onboarding
+package ru.kotlix.skinshowcase.screens.supportproject
 
 import android.annotation.SuppressLint
-import android.util.Log
-import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,33 +14,39 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.viewinterop.AndroidView
-import ru.kotlix.skinshowcase.onboarding.R
-
-private const val STEAM_CALLBACK_LOG_TAG = "SteamAuthCallback"
+import ru.kotlix.skinshowcase.BuildConfig
+import ru.kotlix.skinshowcase.R
+import ru.kotlix.skinshowcase.analytics.AppAnalytics
 
 @OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun SteamAuthWebViewScreen(
-    onCallbackReceived: (String) -> Unit = {},
-    onBack: () -> Unit = {},
+fun SupportProjectScreen(
+    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val donationUrl = BuildConfig.DONATION_URL
+
+    LaunchedEffect(Unit) {
+        AppAnalytics.reportDonationScreenOpened()
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             TopAppBar(
-                title = { Text(stringResource(R.string.onboarding_steam_webview_title)) },
+                title = { Text(stringResource(R.string.profile_support_project)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             painter = painterResource(R.drawable.ic_back),
-                            contentDescription = stringResource(R.string.onboarding_back),
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.onBackground
                         )
                     }
@@ -59,28 +63,16 @@ fun SteamAuthWebViewScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
-            factory = { ctx ->
-                WebView(ctx).apply {
+            factory = { context ->
+                WebView(context).apply {
                     settings.javaScriptEnabled = true
-                    webViewClient = object : WebViewClient() {
-                        override fun shouldOverrideUrlLoading(
-                            view: WebView?,
-                            request: WebResourceRequest?
-                        ): Boolean {
-                            val url = request?.url?.toString() ?: return false
-                            if (SteamAuthConfig.isCallbackUrl(url)) {
-                                Log.d(STEAM_CALLBACK_LOG_TAG, "Steam callback URL: $url")
-                                onCallbackReceived(url)
-                                return true
-                            }
-                            return false
-                        }
-                    }
+                    settings.domStorageEnabled = true
+                    webViewClient = WebViewClient()
                 }
             },
             update = { webView ->
-                if (webView.url.isNullOrBlank()) {
-                    webView.loadUrl(SteamAuthConfig.buildSteamLoginUrl())
+                if (webView.url.isNullOrBlank() && donationUrl.isNotBlank()) {
+                    webView.loadUrl(donationUrl)
                 }
             }
         )

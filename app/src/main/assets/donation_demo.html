@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Тест донатов</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 24px;
+            background: #1a1a1e;
+            color: #e6e1e5;
+            min-height: 100vh;
+        }
+        .card {
+            background: #25252b;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 360px;
+            margin: 0 auto;
+        }
+        h1 { font-size: 1.25rem; margin: 0 0 8px; color: #b794f6; }
+        p { margin: 0 0 20px; font-size: 0.9rem; color: #cac4d0; line-height: 1.4; }
+        .badge {
+            display: inline-block;
+            background: #7c4dff;
+            color: white;
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .note {
+            font-size: 0.8rem;
+            color: #938f99;
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid #49454f;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <span class="badge">ТЕСТОВЫЙ РЕЖИМ</span>
+        <h1>Поддержка проекта</h1>
+        <p>Это демо-страница для проверки экрана донатов в приложении. Реальные платежи не списываются.</p>
+        <p>В релизной сборке здесь будет открываться форма ЮMoney.</p>
+        <p class="note">Чтобы подключить настоящие донаты: создайте форму на yoomoney.ru/quickpay и укажите её ссылку в DONATION_URL (gradle.properties или build.gradle.kts).</p>
+    </div>
+</body>
+</html>

@@ -5,12 +5,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import ru.kotlix.skinshowcase.onboarding.OnboardingScreen
 import ru.kotlix.skinshowcase.onboarding.SteamAuthWebViewScreen
 
 /**
- * Корневой экран онбординга: либо форма входа, либо WebView Steam.
- * После успешного входа (логин/пароль или callback Steam) вызывается [onAuthorized].
+ * Корневой экран онбординга: экран входа через Steam или WebView авторизации Steam.
+ * После успешного callback Steam вызывается [onAuthorized].
  */
 @Composable
 fun OnboardingRoot(
@@ -30,12 +29,10 @@ fun OnboardingRoot(
         )
     } else {
         OnboardingScreen(
-            onLoginSuccess = onAuthorized,
             onSteamLoginClick = {
                 onLoginAttempt("steam")
                 showSteamWebView = true
             },
-            onLoginAttempt = onLoginAttempt,
             modifier = modifier
         )
     }

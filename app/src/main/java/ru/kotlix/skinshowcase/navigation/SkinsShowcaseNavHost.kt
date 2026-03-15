@@ -38,6 +38,7 @@ import ru.kotlix.skinshowcase.data.ProfileDataProvider
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.screens.offers.OffersScreen
 import ru.kotlix.skinshowcase.screens.skindetail.SkinDetailScreen
+import ru.kotlix.skinshowcase.screens.supportproject.SupportProjectScreen
 
 private const val TAB_ANIMATION_DURATION_MS = 300
 
@@ -141,6 +142,7 @@ fun SkinsShowcaseNavHost(
                         navController.navigate(OverlayRoutes.CREATE_OFFER)
                     },
                     onContactSupport = { navController.navigate(chatRoute(ChatsListViewModel.SUPPORT_CHAT_ID)) },
+                    onSupportProject = { navController.navigate(OverlayRoutes.SUPPORT_PROJECT) },
                     onViewFullHistory = { navController.navigate(OverlayRoutes.DEAL_HISTORY) },
                     onDocumentClick = { documentId ->
                         navController.navigate(documentRoute(documentId))
@@ -211,6 +213,9 @@ fun SkinsShowcaseNavHost(
             }
             composable(OverlayRoutes.ABOUT) {
                 AboutScreen(onBack = { navController.popBackStack() })
+            }
+            composable(OverlayRoutes.SUPPORT_PROJECT) {
+                SupportProjectScreen(onBack = { navController.popBackStack() })
             }
             composable(OverlayRoutes.DEAL_HISTORY) {
                 DealHistoryScreen(onBack = { navController.popBackStack() })

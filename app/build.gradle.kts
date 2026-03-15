@@ -29,6 +29,11 @@ android {
                 "APPMETRICA_API_KEY",
                 "\"${project.findProperty("APPMETRICA_API_KEY") ?: ""}\""
             )
+            buildConfigField(
+                "String",
+                "DONATION_URL",
+                "\"${project.findProperty("DONATION_URL") ?: "https://yoomoney.ru/fundraise/1GH51B23J19.260315"}\""
+            )
         }
         release {
             buildConfigField("boolean", "USE_MOCK_SERVER", "false")
@@ -37,6 +42,11 @@ android {
                 "String",
                 "APPMETRICA_API_KEY",
                 "\"${project.findProperty("APPMETRICA_API_KEY") ?: ""}\""
+            )
+            buildConfigField(
+                "String",
+                "DONATION_URL",
+                "\"${project.findProperty("DONATION_URL") ?: "https://yoomoney.ru/fundraise/1GH51B23J19.260315"}\""
             )
             isMinifyEnabled = false
             proguardFiles(

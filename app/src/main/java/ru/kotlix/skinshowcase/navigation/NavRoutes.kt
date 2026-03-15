@@ -23,6 +23,7 @@ object OverlayRoutes {
     const val DEAL_HISTORY = "deal_history"
     const val DOCUMENT = "document/{documentId}"
     const val TRADE_LINK = "trade_link"
+    const val SUPPORT_PROJECT = "support_project"
 }
 
 object NavRoutes {

@@ -1,9 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="onboarding_title">Вход</string>
-    <string name="onboarding_login_hint">Логин</string>
-    <string name="onboarding_password_hint">Пароль</string>
-    <string name="onboarding_login_button">Войти</string>
+    <string name="onboarding_title">Skins Showcase</string>
+    <string name="onboarding_subtitle">Войдите через Steam, чтобы продолжить</string>
     <string name="onboarding_steam_button">Войти через Steam</string>
     <string name="onboarding_steam_webview_title">Авторизация Steam</string>
     <string name="onboarding_back">Назад</string>

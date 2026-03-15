@@ -126,8 +126,7 @@ fun HomeScreen(
         HomeTopBar(
             searchQuery = state.searchQuery,
             onSearchChange = viewModel::updateSearch,
-            onFilterClick = viewModel::openFilterSheet,
-            onMenuClick = { }
+            onFilterClick = viewModel::openFilterSheet
         )
         AppliedFiltersRow(
             filter = state.filter,
@@ -395,8 +394,7 @@ private fun HomeCreateOfferButton(
 private fun HomeTopBar(
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    onFilterClick: () -> Unit,
-    onMenuClick: () -> Unit
+    onFilterClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -430,13 +428,6 @@ private fun HomeTopBar(
             Icon(
                 painter = painterResource(R.drawable.ic_filter),
                 contentDescription = stringResource(R.string.home_filter_description),
-                tint = MaterialTheme.colorScheme.onSurface
-            )
-        }
-        IconButton(onClick = onMenuClick) {
-            Icon(
-                painter = painterResource(R.drawable.ic_menu),
-                contentDescription = stringResource(R.string.home_menu_description),
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
