@@ -215,7 +215,7 @@ fun SkinDetailScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = state.sellerNickname ?: "@Seller",
+                            text = state.sellerNickname ?: stringResource(R.string.skin_detail_seller),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )

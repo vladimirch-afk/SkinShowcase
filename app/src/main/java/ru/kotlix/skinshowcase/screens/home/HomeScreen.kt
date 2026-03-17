@@ -72,8 +72,6 @@ import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
-import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
-import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.components.NetworkImage
 
@@ -372,15 +370,8 @@ private fun HomeCreateOfferButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier
-            .height(48.dp)
-            .background(
-                Brush.horizontalGradient(
-                    colors = listOf(PurpleBlueGradientStart, PurpleBlueGradientEnd)
-                ),
-                shape = RoundedCornerShape(12.dp)
-            ),
-        colors = ButtonDefaults.buttonColors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+        modifier = modifier.height(48.dp),
+        shape = RoundedCornerShape(12.dp),
         contentPadding = ButtonDefaults.ContentPadding
     ) {
         Text(

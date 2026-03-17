@@ -18,6 +18,7 @@ class SkinsShowcaseApplication : Application() {
         AppMetricaPush.activate(applicationContext)
         PrivacyPreferences.init(this)
         TradeLinkPreferences.init(this)
+        // В debug (USE_MOCK_SERVER=true) используем моки: скины, чаты, профиль, документы — без сервера.
         initMockIfEnabled()
         SkinsProvider.init(this, if (BuildConfig.USE_MOCK_SERVER) MockServer.getApiService() else null)
         MessagingProvider.init(this, if (BuildConfig.USE_MOCK_SERVER) MockServer.getMessagingApiService() else null)

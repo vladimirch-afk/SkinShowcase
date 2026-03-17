@@ -334,7 +334,12 @@ private fun ChatListItem(
                 modifier = Modifier
                     .size(CHAT_AVATAR_SIZE)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .background(
+                        if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID)
+                            androidx.compose.ui.graphics.Color(0xFFD32F2F)
+                        else
+                            MaterialTheme.colorScheme.surfaceVariant
+                    ),
                 contentAlignment = androidx.compose.ui.Alignment.Center
             ) {
                 if (!chat.avatarUrl.isNullOrBlank()) {
@@ -345,6 +350,16 @@ private fun ChatListItem(
                             .fillMaxSize()
                             .clip(CircleShape),
                         contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(ru.kotlix.skinshowcase.message.R.drawable.ic_avatar_person),
+                        contentDescription = null,
+                        modifier = Modifier.size(CHAT_AVATAR_SIZE * 0.6f),
+                        tint = if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID)
+                            androidx.compose.ui.graphics.Color.White
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

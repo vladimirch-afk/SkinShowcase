@@ -145,14 +145,6 @@ fun ProfileScreen(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        DealHistoryCard(
-            deals = state.dealHistory,
-            hasActiveOffers = state.hasActiveOffers,
-            onViewFullHistory = onViewFullHistory,
-            onCreateOffer = onCreateOffer
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-
         FavoritesCard(onClick = onNavigateToFavorites)
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -266,13 +258,30 @@ private fun ProfileHeaderCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                NetworkImage(
-                    url = steamAvatarUrl,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(AVATAR_SIZE)
-                        .clip(CircleShape)
-                )
+                if (!steamAvatarUrl.isNullOrBlank()) {
+                    NetworkImage(
+                        url = steamAvatarUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(AVATAR_SIZE)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(AVATAR_SIZE)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_avatar_me),
+                            contentDescription = null,
+                            modifier = Modifier.size(AVATAR_SIZE * 0.6f),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
                 Column {
                     Text(
                         text = stringResource(R.string.profile_your_profile),
@@ -478,110 +487,6 @@ private fun ProfilePeekRow(
                     )
                 )
         )
-    }
-}
-
-@Composable
-private fun DealHistoryCard(
-    deals: List<DealSummary>,
-    hasActiveOffers: Boolean,
-    onViewFullHistory: () -> Unit,
-    onCreateOffer: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val hasDeals = deals.isNotEmpty()
-    ProfileSectionCard(
-        title = stringResource(R.string.profile_trade_history),
-        modifier = modifier
-    ) {
-        when {
-            hasDeals && deals.size >= 2 -> {
-                ProfilePeekRow(
-                    gradientColor = MaterialTheme.colorScheme.surface,
-                    item1 = {
-                        DealRowContent(
-                            deal = deals[0],
-                            modifier = Modifier.clickable(onClick = onViewFullHistory)
-                        )
-                    },
-                    item2 = {
-                        DealRowContent(
-                            deal = deals[1],
-                            modifier = Modifier.clickable(onClick = onViewFullHistory)
-                        )
-                    }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.profile_view_full_history),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onViewFullHistory)
-                )
-            }
-            hasDeals && deals.size == 1 -> {
-                DealRowContent(
-                    deal = deals.first(),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(onClick = onViewFullHistory)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.profile_view_full_history),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onViewFullHistory)
-                )
-            }
-            hasActiveOffers -> {
-                Text(
-                    text = stringResource(R.string.profile_no_deals_yet),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            else -> {
-                Text(
-                    text = stringResource(R.string.profile_no_offers_invite),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = stringResource(R.string.profile_create_offer_cta),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.clickable(onClick = onCreateOffer)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun DealRowContent(
-    deal: DealSummary,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier.padding(end = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = deal.summary,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            deal.counterpartName?.let { name ->
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
     }
 }
 

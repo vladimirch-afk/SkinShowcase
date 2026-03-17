@@ -75,7 +75,7 @@
 <string name="skin_detail_wear">Поношенность</string>
 <string name="skin_detail_type">Тип</string>
 <string name="skin_detail_pattern">Паттерн</string>
-<string name="skin_detail_seller">Продавец</string>
+<string name="skin_detail_seller">Пользователь</string>
     <string name="skin_detail_no_value">—</string>
     <string name="skin_detail_go_to_steam_title">Перейти в Steam?</string>
     <string name="skin_detail_go_to_steam_message">Открыть страницу пользователя в Steam?</string>

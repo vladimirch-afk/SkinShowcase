@@ -18,6 +18,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -184,7 +185,10 @@ private fun ChatInputRow(
             placeholder = { Text(stringResource(R.string.message_input_hint)) },
             shape = RoundedCornerShape(24.dp),
             maxLines = 4,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Text,
+                imeAction = ImeAction.Send
+            ),
             keyboardActions = KeyboardActions(onSend = { onSend(); keyboardController?.hide() }),
             singleLine = false
         )

@@ -121,5 +121,5 @@ private fun supportChatItem(): ChatItem = ChatItem(
     lastMessage = "",
     lastMessageTimeMillis = 0L,
     unreadCount = 0,
-    avatarUrl = "https://picsum.photos/seed/support-robot/128/128"
+    avatarUrl = null
 )
