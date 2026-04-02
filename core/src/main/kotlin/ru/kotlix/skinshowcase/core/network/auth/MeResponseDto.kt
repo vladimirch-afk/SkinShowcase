@@ -9,5 +9,6 @@ data class MeResponseDto(
     @SerializedName("steamId") val steamId: String?,
     @SerializedName("privateProfile") val privateProfile: Boolean? = null,
     @SerializedName("successfulTradesCount") val successfulTradesCount: Int? = null,
-    @SerializedName("lastOnlineAt") val lastOnlineAt: String? = null
+    @SerializedName("lastOnlineAt") val lastOnlineAt: String? = null,
+    @SerializedName("steamTradeLink") val steamTradeLink: String? = null
 )

@@ -233,7 +233,7 @@ private fun ChatsListContent(
                     ChatListItem(
                         chat = chat,
                         onClick = { onChatClick(chat.id) },
-                        onLongClick = if (chat.id != ChatsListViewModel.SUPPORT_CHAT_ID) {
+                        onLongClick = if (!ChatsListViewModel.isSupportChatId(chat.id)) {
                             { onChatLongClick(chat.id) }
                         } else {
                             { }
@@ -307,7 +307,7 @@ private fun ChatListItem(
     onLongClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
-    val displayNickname = if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID) {
+    val displayNickname = if (ChatsListViewModel.isSupportChatId(chat.id)) {
         stringResource(R.string.message_support_chat)
     } else {
         chat.nickname
@@ -335,7 +335,7 @@ private fun ChatListItem(
                     .size(CHAT_AVATAR_SIZE)
                     .clip(CircleShape)
                     .background(
-                        if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID)
+                        if (ChatsListViewModel.isSupportChatId(chat.id))
                             androidx.compose.ui.graphics.Color(0xFFD32F2F)
                         else
                             MaterialTheme.colorScheme.surfaceVariant
@@ -356,7 +356,7 @@ private fun ChatListItem(
                         painter = androidx.compose.ui.res.painterResource(ru.kotlix.skinshowcase.message.R.drawable.ic_avatar_person),
                         contentDescription = null,
                         modifier = Modifier.size(CHAT_AVATAR_SIZE * 0.6f),
-                        tint = if (chat.id == ChatsListViewModel.SUPPORT_CHAT_ID)
+                        tint = if (ChatsListViewModel.isSupportChatId(chat.id))
                             androidx.compose.ui.graphics.Color.White
                         else
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -372,7 +372,7 @@ private fun ChatListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                if (chat.id != ChatsListViewModel.SUPPORT_CHAT_ID) {
+                if (!ChatsListViewModel.isSupportChatId(chat.id)) {
                     Text(
                         text = chat.id,
                         style = MaterialTheme.typography.bodySmall,

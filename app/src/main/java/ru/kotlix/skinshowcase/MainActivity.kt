@@ -21,9 +21,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import io.appmetrica.analytics.push.AppMetricaPush
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
+import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.auth.JwtSubjectParser
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.navigation.SkinsShowcaseNavHost
 import ru.kotlix.skinshowcase.onboarding.OnboardingRoot
+import ru.kotlix.skinshowcase.settings.AuthTokenPreferences
 
 private const val AUTH_PREFS_NAME = "auth"
 private const val KEY_AUTHORIZED = "authorized"
@@ -45,7 +48,9 @@ class MainActivity : ComponentActivity() {
                 }
                 if (showOnboarding) {
                     OnboardingRoot(
-                        onAuthorized = {
+                        onAuthorized = { accessToken ->
+                            AuthTokenPreferences.setToken(accessToken)
+                            CurrentUser.steamId = JwtSubjectParser.parseSteamId(accessToken)
                             AppAnalytics.reportLoginSuccess()
                             prefs.edit().putBoolean(KEY_AUTHORIZED, true).apply()
                             showOnboarding = false
@@ -58,6 +63,8 @@ class MainActivity : ComponentActivity() {
                     SkinsShowcaseNavHost(
                         onLogout = {
                             AppAnalytics.reportEvent("logout")
+                            AuthTokenPreferences.setToken(null)
+                            CurrentUser.steamId = null
                             prefs.edit().putBoolean(KEY_AUTHORIZED, false).apply()
                             showOnboarding = true
                         },

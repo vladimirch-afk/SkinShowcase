@@ -7,6 +7,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import ru.kotlix.skinshowcase.core.Result
 import ru.kotlix.skinshowcase.core.BaseViewModel
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
 import ru.kotlix.skinshowcase.message.domain.ChatItem
 import ru.kotlix.skinshowcase.message.domain.toChatItem
@@ -17,7 +18,7 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 
     override fun initialState(): ChatsListUiState = ChatsListUiState(
         isLoading = true,
-        chats = listOf(supportChatItem())
+        chats = pinnedSupportChat()
     )
 
     init {
@@ -43,7 +44,7 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                 when (result) {
                     is Result.Success -> {
                         val fromApi = result.data.map { dto -> dto.toChatItem() }
-                        val withSupport = listOf(supportChatItem()) + fromApi.filter { it.id != SUPPORT_CHAT_ID }
+                        val withSupport = pinnedSupportChat() + fromApi.filter { it.id != SUPPORT_CHAT_ID }
                         updateState {
                             it.copy(
                                 chats = withSupport,
@@ -55,7 +56,7 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                     }
                     is Result.Error -> updateState {
                         it.copy(
-                            chats = listOf(supportChatItem()) + it.chats.filter { c -> c.id != SUPPORT_CHAT_ID },
+                            chats = pinnedSupportChat() + it.chats.filter { c -> c.id != SUPPORT_CHAT_ID },
                             isLoading = false,
                             isRefreshing = false,
                             errorMessage = result.throwable.message ?: "Ошибка загрузки чатов"
@@ -111,9 +112,25 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
     }
 
     companion object {
-        const val SUPPORT_CHAT_ID = "support"
+        /**
+         * ID для навигации и списка: реальный SteamID64 поддержки, если задан в `gradle.properties`
+         * (`MESSAGING_SUPPORT_STEAM_ID`), иначе плейсхолдер `support` (только для UI; API всё равно требует 17 цифр).
+         */
+        val SUPPORT_CHAT_ID: String =
+            if (MessagingChatPaths.isValidSteamId17(MessagingChatPaths.configuredSupportSteamId)) {
+                MessagingChatPaths.configuredSupportSteamId
+            } else {
+                MessagingChatPaths.SUPPORT_PLACEHOLDER
+            }
+
+        fun isSupportChatId(chatId: String): Boolean =
+            chatId == MessagingChatPaths.SUPPORT_PLACEHOLDER ||
+                (SUPPORT_CHAT_ID != MessagingChatPaths.SUPPORT_PLACEHOLDER && chatId == SUPPORT_CHAT_ID)
     }
 }
+
+/** Чат поддержки всегда закреплён сверху списка (как в продукте). */
+private fun pinnedSupportChat(): List<ChatItem> = listOf(supportChatItem())
 
 private fun supportChatItem(): ChatItem = ChatItem(
     id = ChatsListViewModel.SUPPORT_CHAT_ID,

@@ -1,7 +1,19 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+}
+
+fun resolveMessagingSupportSteamId(): String {
+    val fromRoot = (rootProject.findProperty("MESSAGING_SUPPORT_STEAM_ID") as? String)?.trim().orEmpty()
+    if (fromRoot.isNotEmpty()) return fromRoot
+    val localFile = rootProject.file("local.properties")
+    if (!localFile.exists()) return ""
+    val p = Properties()
+    localFile.inputStream().use { stream -> p.load(stream) }
+    return p.getProperty("MESSAGING_SUPPORT_STEAM_ID", "").trim()
 }
 
 android {
@@ -12,6 +24,11 @@ android {
         minSdk = Config.minSdk
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles("consumer-rules.pro")
+        buildConfigField(
+            "String",
+            "MESSAGING_SUPPORT_STEAM_ID",
+            "\"${resolveMessagingSupportSteamId()}\""
+        )
     }
     buildFeatures {
         buildConfig = true

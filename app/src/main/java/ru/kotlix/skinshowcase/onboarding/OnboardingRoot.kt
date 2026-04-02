@@ -8,12 +8,12 @@ import androidx.compose.runtime.setValue
 import ru.kotlix.skinshowcase.onboarding.SteamAuthWebViewScreen
 
 /**
- * Корневой экран онбординга: экран входа через Steam или WebView авторизации Steam.
- * После успешного callback Steam вызывается [onAuthorized].
+ * Корневой экран онбординга: экран входа через Steam или WebView.
+ * Вход идёт через api-gateway `GET /auth/steam`, как на auth-сервисе; JWT приходит во fragment `#token=`.
  */
 @Composable
 fun OnboardingRoot(
-    onAuthorized: () -> Unit,
+    onAuthorized: (accessToken: String) -> Unit,
     onLoginAttempt: (method: String) -> Unit = {},
     modifier: androidx.compose.ui.Modifier = androidx.compose.ui.Modifier
 ) {
@@ -21,9 +21,7 @@ fun OnboardingRoot(
 
     if (showSteamWebView) {
         SteamAuthWebViewScreen(
-            onCallbackReceived = { _ ->
-                onAuthorized()
-            },
+            onAuthSuccess = onAuthorized,
             onBack = { showSteamWebView = false },
             modifier = modifier
         )

@@ -9,6 +9,7 @@ import ru.kotlix.skinshowcase.core.database.mapper.toChatDto
 import ru.kotlix.skinshowcase.core.database.mapper.toMessageDto
 import ru.kotlix.skinshowcase.core.network.messaging.ChatDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingApiService
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessageDto
 import ru.kotlix.skinshowcase.core.network.messaging.SendMessageRequest
 
@@ -37,7 +38,8 @@ class MessagingRepository(
     }
 
     suspend fun getMessages(chatId: String): Result<List<MessageDto>> {
-        return runCatching { api.getMessages(chatId) }
+        val apiChatId = MessagingChatPaths.steamIdForApiPath(chatId)
+        return runCatching { api.getMessages(apiChatId) }
             .fold(
                 onSuccess = { list ->
                     messageCacheDao.deleteByChatId(chatId)
@@ -52,7 +54,8 @@ class MessagingRepository(
     }
 
     suspend fun sendMessage(chatId: String, text: String): Result<MessageDto> {
-        return runCatching { api.sendMessage(chatId, SendMessageRequest(text)) }
+        val apiChatId = MessagingChatPaths.steamIdForApiPath(chatId)
+        return runCatching { api.sendMessage(apiChatId, SendMessageRequest(text)) }
             .fold(
                 onSuccess = { msg ->
                     messageCacheDao.insert(msg.toCachedMessageEntity(chatId))
@@ -63,8 +66,9 @@ class MessagingRepository(
     }
 
     suspend fun deleteMessage(chatId: String, messageId: String): Result<Unit> {
+        val apiChatId = MessagingChatPaths.steamIdForApiPath(chatId)
         return runCatching {
-            api.deleteMessage(chatId, messageId)
+            api.deleteMessage(apiChatId, messageId)
             messageCacheDao.deleteMessage(chatId, messageId)
         }.fold(
             onSuccess = { Result.Success(Unit) },
@@ -73,8 +77,9 @@ class MessagingRepository(
     }
 
     suspend fun deleteChat(chatId: String): Result<Unit> {
+        val apiChatId = MessagingChatPaths.steamIdForApiPath(chatId)
         return runCatching {
-            api.deleteChat(chatId)
+            api.deleteChat(apiChatId)
             messageCacheDao.deleteByChatId(chatId)
             chatCacheDao.deleteByChatId(chatId)
         }.fold(

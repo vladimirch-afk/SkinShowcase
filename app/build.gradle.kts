@@ -23,7 +23,12 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "MESSAGING_DEBUG_TOKEN", "\"\"")
-            buildConfigField("boolean", "USE_MOCK_SERVER", "true")
+            buildConfigField("boolean", "USE_MOCK_SERVER", "false")
+            buildConfigField(
+                "String",
+                "AUTH_FRONTEND_REDIRECT_URL",
+                "\"${project.findProperty("AUTH_FRONTEND_REDIRECT_URL") ?: "skinshowcase://auth/callback"}\""
+            )
             buildConfigField(
                 "String",
                 "APPMETRICA_API_KEY",
@@ -38,6 +43,11 @@ android {
         release {
             buildConfigField("boolean", "USE_MOCK_SERVER", "false")
             buildConfigField("String", "MESSAGING_DEBUG_TOKEN", "\"\"")
+            buildConfigField(
+                "String",
+                "AUTH_FRONTEND_REDIRECT_URL",
+                "\"${project.findProperty("AUTH_FRONTEND_REDIRECT_URL") ?: "skinshowcase://auth/callback"}\""
+            )
             buildConfigField(
                 "String",
                 "APPMETRICA_API_KEY",
@@ -72,7 +82,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":designsystem"))
     implementation(project(":message"))
-    implementation(project(":mock"))
+    // implementation(project(":mock")) // моки отключены — данные с api-gateway
     implementation(project(":onboarding"))
 
     implementation(libs.androidx.core)

@@ -23,7 +23,7 @@ class ChatViewModel(
 
     private val _uiState = MutableStateFlow(
         ChatUiState(
-            chatTitle = if (chatId == ChatsListViewModel.SUPPORT_CHAT_ID) "Поддержка" else "Чат $chatId"
+            chatTitle = if (ChatsListViewModel.isSupportChatId(chatId)) "Поддержка" else "Чат $chatId"
         )
     )
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()

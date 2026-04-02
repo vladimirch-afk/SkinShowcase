@@ -33,7 +33,7 @@ import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.R
-import ru.kotlix.skinshowcase.mock.MockDocuments
+import ru.kotlix.skinshowcase.data.DocumentResources
 import java.io.File
 import java.io.FileOutputStream
 
@@ -51,7 +51,7 @@ fun DocumentViewerScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val assetPath = MockDocuments.getDocumentAssetPath(documentId)
+    val assetPath = DocumentResources.getDocumentAssetPath(documentId)
     var loadState by remember(assetPath) { mutableStateOf<DocumentLoadState>(DocumentLoadState.Loading) }
 
     LaunchedEffect(assetPath) {
@@ -65,8 +65,8 @@ fun DocumentViewerScreen(
     }
 
     val title = when (documentId) {
-        MockDocuments.DOC_AGREEMENT -> stringResource(R.string.profile_user_agreement)
-        MockDocuments.DOC_INSTRUCTIONS -> stringResource(R.string.profile_instructions)
+        DocumentResources.DOC_AGREEMENT -> stringResource(R.string.profile_user_agreement)
+        DocumentResources.DOC_INSTRUCTIONS -> stringResource(R.string.profile_instructions)
         else -> stringResource(R.string.profile_documents)
     }
 
