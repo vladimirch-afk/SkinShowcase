@@ -38,6 +38,7 @@
     <string name="home_create_offer">Создать оффер</string>
     <string name="create_offer_select_skin_title">Мои скины</string>
 <string name="create_offer_inventory_empty">В инвентаре нет предметов. Нажмите «Загрузить инвентарь» в профиле или проверьте настройки инвентаря в Steam.</string>
+<string name="create_offer_group_by_name">Группировать по названию</string>
     <string name="profile_your_profile">Ваш профиль</string>
     <string name="profile_steam_id">Steam ID</string>
     <string name="profile_trade_link">Ссылка для обмена</string>

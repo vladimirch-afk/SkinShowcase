@@ -8,12 +8,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
@@ -145,33 +143,88 @@ fun CreateOfferSelectSkinScreen(
                 )
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(GRID_COLUMNS),
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
-                verticalArrangement = Arrangement.spacedBy(GRID_SPACING)
-            ) {
-                itemsIndexed(
-                    items = state.skins,
-                    key = { index, skin ->
-                        skin.inventoryAssetId?.takeIf { it.isNotBlank() } ?: "${skin.id}_$index"
-                    }
-                ) { _, skin ->
-                    MySkinGridCard(
-                        skin = skin,
-                        onClick = { onSkinClick(skin.id) }
+            val rows = remember(state.skins, state.groupByName) {
+                state.skins.toInventoryGridRows(state.groupByName)
+            }
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = stringResource(R.string.create_offer_group_by_name),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
                     )
+                    Switch(
+                        checked = state.groupByName,
+                        onCheckedChange = viewModel::setGroupByName,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
+                }
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(GRID_COLUMNS),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                    verticalArrangement = Arrangement.spacedBy(GRID_SPACING)
+                ) {
+                    itemsIndexed(
+                        items = rows,
+                        key = { index, row ->
+                            row.stableGridKey(index)
+                        }
+                    ) { _, row ->
+                        MySkinGridCard(
+                            skin = row.skin,
+                            stackLabel = row.stackLabel,
+                            onClick = { onSkinClick(row.skin.id) }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+private data class InventoryGridRow(
+    val skin: Skin,
+    val stackLabel: String?
+)
+
+private fun List<Skin>.toInventoryGridRows(groupByName: Boolean): List<InventoryGridRow> {
+    if (!groupByName) {
+        return map { InventoryGridRow(it, null) }
+    }
+    return groupBy { it.name }
+        .values
+        .map { list ->
+            InventoryGridRow(skin = list.first(), stackLabel = "x${list.size}")
+        }
+        .sortedBy { it.skin.name.lowercase() }
+}
+
+private fun InventoryGridRow.stableGridKey(fallbackIndex: Int): String {
+    val asset = skin.inventoryAssetId?.takeIf { it.isNotBlank() }
+    if (stackLabel != null) {
+        return "grp:${skin.name}"
+    }
+    return asset ?: "${skin.id}_$fallbackIndex"
+}
+
 @Composable
 private fun MySkinGridCard(
     skin: Skin,
     onClick: () -> Unit,
+    stackLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -220,6 +273,17 @@ private fun MySkinGridCard(
                     text = formatPriceRub(skin.price),
                     style = MaterialTheme.typography.labelMedium,
                     color = PriceGreen
+                )
+            }
+            stackLabel?.let { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(10.dp)
                 )
             }
         }
