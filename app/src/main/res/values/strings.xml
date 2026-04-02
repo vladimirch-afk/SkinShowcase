@@ -37,6 +37,7 @@
     <string name="home_menu_description">Меню</string>
     <string name="home_create_offer">Создать оффер</string>
     <string name="create_offer_select_skin_title">Мои скины</string>
+<string name="create_offer_inventory_empty">В инвентаре нет предметов. Нажмите «Загрузить инвентарь» в профиле или проверьте настройки инвентаря в Steam.</string>
     <string name="profile_your_profile">Ваш профиль</string>
     <string name="profile_steam_id">Steam ID</string>
     <string name="profile_trade_link">Ссылка для обмена</string>
@@ -137,4 +138,13 @@
 <string name="error_data_message">Ошибка получения данных. Возможна проблема с подключением к интернету.</string>
 <string name="error_dialog_ok">ОК</string>
 <string name="error_dialog_settings">Настройки</string>
+<string name="profile_inventory_sync_title">Инвентарь Steam</string>
+<string name="profile_inventory_sync_subtitle">Запросить инвентарь CS2 у gateway (обновить кэш на сервере)</string>
+<string name="inventory_sync_screen_title">Загрузка инвентаря</string>
+<string name="inventory_sync_button">Загрузить инвентарь</string>
+<string name="inventory_sync_success">Получено предметов: %d</string>
+<string name="inventory_sync_hint">Вызывается GET /api/v1/inventory/{steamId} для вашего аккаунта.</string>
+<string name="trade_link_save_error">Не удалось сохранить</string>
+<string name="settings_privacy_load_error">Не удалось загрузить настройки приватности</string>
+<string name="settings_privacy_sync_error">Не удалось сохранить на сервере</string>
 </resources>

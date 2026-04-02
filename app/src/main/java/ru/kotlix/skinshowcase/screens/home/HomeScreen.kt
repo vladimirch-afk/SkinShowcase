@@ -82,7 +82,7 @@ private val AVATAR_SIZE = 32.dp
 
 @Composable
 fun HomeScreen(
-    onSkinClick: (String) -> Unit = {},
+    onSkinClick: (skinId: String, offerOwnerSteamId: String?) -> Unit = { _, _ -> },
     onCreateOffer: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
     modifier: Modifier = Modifier
@@ -190,8 +190,9 @@ fun HomeScreen(
                 ) { skin ->
                     SkinListingCard(
                         skin = skin,
-                        onClick = { onSkinClick(skin.id) },
-                        onFavoriteClick = { viewModel.toggleFavorite(skin) }
+                        onClick = { onSkinClick(skin.id, skin.offerOwnerSteamId) },
+                        onFavoriteClick = { viewModel.toggleFavorite(skin) },
+                        showFavorite = skin.offerOwnerSteamId == null
                     )
                 }
                 // Чтобы список всегда скроллился и PullToRefresh срабатывал.
@@ -429,7 +430,8 @@ private fun HomeTopBar(
 private fun SkinListingCard(
     skin: Skin,
     onClick: () -> Unit,
-    onFavoriteClick: () -> Unit
+    onFavoriteClick: () -> Unit,
+    showFavorite: Boolean = true
 ) {
     Card(
         onClick = onClick,
@@ -469,15 +471,17 @@ private fun SkinListingCard(
                     color = PriceGreen
                 )
             }
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier.size(40.dp)
-            ) {
-                Icon(
-                    imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                    contentDescription = if (skin.isFavorite) stringResource(R.string.favorites_remove) else stringResource(R.string.favorites_add),
-                    tint = if (skin.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            if (showFavorite) {
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = if (skin.isFavorite) stringResource(R.string.favorites_remove) else stringResource(R.string.favorites_add),
+                        tint = if (skin.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -513,6 +517,6 @@ private fun formatPriceRub(price: Double?): String {
 @Composable
 private fun HomeScreenPreview() {
     SkinShowcaseTheme {
-        HomeScreen(onSkinClick = {})
+        HomeScreen(onSkinClick = { _, _ -> })
     }
 }

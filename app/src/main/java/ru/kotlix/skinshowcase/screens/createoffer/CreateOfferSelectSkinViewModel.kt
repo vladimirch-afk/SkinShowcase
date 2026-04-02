@@ -1,13 +1,21 @@
 package ru.kotlix.skinshowcase.screens.createoffer
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.core.BaseViewModel
+import ru.kotlix.skinshowcase.core.network.RetrofitProvider
+import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
 import ru.kotlix.skinshowcase.core.domain.Skin
-import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.core.network.inventory.toInventorySkin
 
 data class CreateOfferSelectSkinUiState(
     val skins: List<Skin> = emptyList(),
     val isLoading: Boolean = true,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** Группировать карточки по названию предмета и показывать счётчик. */
+    val groupByName: Boolean = false
 )
 
 class CreateOfferSelectSkinViewModel : BaseViewModel<CreateOfferSelectSkinUiState>() {
@@ -19,7 +27,17 @@ class CreateOfferSelectSkinViewModel : BaseViewModel<CreateOfferSelectSkinUiStat
         launch {
             updateState { it.copy(isLoading = true, errorMessage = null) }
             runCatching {
-                SkinsProvider.repository.getSkinsFromApi()
+                withContext(Dispatchers.IO) {
+                    val auth = RetrofitProvider.create(AuthApiService::class.java)
+                    val steamId = CurrentUser.steamId?.trim()?.takeIf { it.length == 17 }
+                        ?: auth.getMe().steamId?.trim()?.takeIf { it.length == 17 }
+                    if (steamId == null) {
+                        throw IllegalStateException("Войдите через Steam, чтобы загрузить инвентарь")
+                    }
+                    CurrentUser.steamId = steamId
+                    val inv = RetrofitProvider.create(InventoryApiService::class.java).getInventory(steamId)
+                    inv.items.orEmpty().mapIndexed { index, dto -> dto.toInventorySkin(index) }
+                }
             }.fold(
                 onSuccess = { list ->
                     updateState {
@@ -41,5 +59,9 @@ class CreateOfferSelectSkinViewModel : BaseViewModel<CreateOfferSelectSkinUiStat
 
     fun clearError() {
         updateState { it.copy(errorMessage = null) }
+    }
+
+    fun setGroupByName(enabled: Boolean) {
+        updateState { it.copy(groupByName = enabled) }
     }
 }

@@ -39,6 +39,7 @@ import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.screens.offers.OffersScreen
 import ru.kotlix.skinshowcase.screens.skindetail.SkinDetailScreen
 import ru.kotlix.skinshowcase.screens.supportproject.SupportProjectScreen
+import ru.kotlix.skinshowcase.screens.inventorysync.InventorySyncScreen
 
 private const val TAB_ANIMATION_DURATION_MS = 300
 
@@ -103,7 +104,9 @@ fun SkinsShowcaseNavHost(
         ) {
             composable(TabRoutes.HOME) {
                 HomeScreen(
-                    onSkinClick = { skinId -> navController.navigate(skinDetailRoute(skinId)) },
+                    onSkinClick = { skinId, offerOwnerSteamId ->
+                        navController.navigate(skinDetailRoute(skinId, offerOwnerSteamId = offerOwnerSteamId))
+                    },
                     onCreateOffer = { navController.navigate(OverlayRoutes.CREATE_OFFER) }
                 )
             }
@@ -147,6 +150,7 @@ fun SkinsShowcaseNavHost(
                     onDocumentClick = { documentId ->
                         navController.navigate(documentRoute(documentId))
                     },
+                    onNavigateToInventorySync = { navController.navigate(OverlayRoutes.INVENTORY_SYNC) },
                     onLogout = onLogout
                 )
             }
@@ -156,7 +160,11 @@ fun SkinsShowcaseNavHost(
                 arguments = listOf(
                     navArgument(NavRoutes.SKIN_DETAIL_ID_ARG) { type = NavType.StringType },
                     navArgument(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) { type = NavType.BoolType; defaultValue = false },
-                    navArgument(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) { type = NavType.BoolType; defaultValue = false }
+                    navArgument(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) { type = NavType.BoolType; defaultValue = false },
+                    navArgument(NavRoutes.SKIN_DETAIL_OFFER_OWNER_STEAM_ID_ARG) {
+                        type = NavType.StringType
+                        defaultValue = "_"
+                    }
                 )
             ) { backStackEntry ->
                 val skinId = backStackEntry.arguments?.getString(NavRoutes.SKIN_DETAIL_ID_ARG) ?: ""
@@ -194,6 +202,9 @@ fun SkinsShowcaseNavHost(
             }
             composable(OverlayRoutes.TRADE_LINK) {
                 TradeLinkScreen(onBack = { navController.popBackStack() })
+            }
+            composable(OverlayRoutes.INVENTORY_SYNC) {
+                InventorySyncScreen(onBack = { navController.popBackStack() })
             }
             composable(OverlayRoutes.FAVORITES) {
                 FavoritesScreen(

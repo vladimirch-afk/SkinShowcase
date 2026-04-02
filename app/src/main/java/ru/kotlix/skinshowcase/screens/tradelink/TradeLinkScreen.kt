@@ -79,8 +79,17 @@ fun TradeLinkScreen(
                 shape = RoundedCornerShape(12.dp)
             )
             Spacer(modifier = Modifier.height(16.dp))
+            state.errorMessage?.let { msg ->
+                Text(
+                    text = msg,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             Button(
                 onClick = { viewModel.save() },
+                enabled = !state.isSaving,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             ) {
@@ -90,6 +99,7 @@ fun TradeLinkScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedButton(
                     onClick = { viewModel.delete() },
+                    enabled = !state.isSaving,
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {

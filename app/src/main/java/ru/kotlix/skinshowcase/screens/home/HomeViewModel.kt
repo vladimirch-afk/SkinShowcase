@@ -9,15 +9,17 @@ import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinFilter
+import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.trades.TradesApiService
+import ru.kotlix.skinshowcase.core.network.trades.toFeedSkin
 
 class HomeViewModel : BaseViewModel<HomeUiState>() {
 
     override fun initialState(): HomeUiState = HomeUiState(
         skins = emptyList(),
         isLoading = true
-        // Данные-заглушки отключены — загрузка через api-gateway (SkinsProvider.repository)
-        // defaultSkins() закомментировано ниже
     )
 
     fun loadSkins() {
@@ -31,9 +33,14 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                 )
             }
             try {
+                val useFeed = uiState.value.tradeFeedMode
                 val list = withTimeout(15_000) {
                     withContext(Dispatchers.IO) {
-                        SkinsProvider.repository.getSkinsFromApi()
+                        if (useFeed) {
+                            loadTradeFeedSkins()
+                        } else {
+                            SkinsProvider.repository.getSkinsFromApi()
+                        }
                     }
                 }
                 withContext(Dispatchers.Main.immediate) {
@@ -67,6 +74,13 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
         }
     }
 
+    private suspend fun loadTradeFeedSkins(): List<Skin> {
+        val api = RetrofitProvider.create(TradesApiService::class.java)
+        val exclude = CurrentUser.steamId?.trim()?.takeIf { it.length == 17 }
+        val page = api.getFeed(page = 0, size = 50, excludeSteamId = exclude)
+        return page.content.mapNotNull { it.toFeedSkin() }
+    }
+
     fun clearError() {
         updateState { it.copy(errorMessage = null) }
     }
@@ -98,6 +112,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
     }
 
     fun toggleFavorite(skin: Skin) {
+        if (skin.offerOwnerSteamId != null) return
         launch {
             val repo = SkinsProvider.repository
             val added = !skin.isFavorite
@@ -113,11 +128,4 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
             AppAnalytics.reportEvent(if (added) "favorite_added" else "favorite_removed", mapOf("skin_id" to skin.id))
         }
     }
-
-    // --- данные-заглушки (отключены, данные через api-gateway) ---
-    // private fun defaultSkins(): List<Skin> = listOf(
-    //     Skin(id = "ak47-redline", name = "АК-47 | Красная линия", imageUrl = null, price = 40_000.0),
-    //     Skin(id = "butterfly-gradient", name = "Butterfly Knife | Градиент", imageUrl = null, price = 100_000.0),
-    //     Skin(id = "awp-lighting", name = "AWP | Молния", imageUrl = null, price = 55_000.0)
-    // )
 }

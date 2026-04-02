@@ -112,7 +112,7 @@ fun SkinDetailScreen(
                 }
             },
             actions = {
-                if (!isOwnOffer && !isCreatingOffer && skin != null) {
+                if (!isOwnOffer && !isCreatingOffer && skin != null && !state.isTradeFeedOffer) {
                     IconButton(onClick = { viewModel.toggleFavorite() }) {
                         Icon(
                             imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,

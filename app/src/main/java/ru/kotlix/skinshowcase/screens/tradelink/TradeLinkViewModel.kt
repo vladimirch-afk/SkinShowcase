@@ -1,6 +1,11 @@
 package ru.kotlix.skinshowcase.screens.tradelink
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.core.BaseViewModel
+import ru.kotlix.skinshowcase.core.network.RetrofitProvider
+import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.auth.UpdateTradeLinkRequestDto
 import ru.kotlix.skinshowcase.settings.TradeLinkPreferences
 
 class TradeLinkViewModel : BaseViewModel<TradeLinkUiState>() {
@@ -14,20 +19,68 @@ class TradeLinkViewModel : BaseViewModel<TradeLinkUiState>() {
     }
 
     fun updateDraft(value: String) {
-        updateState { it.copy(draft = value) }
+        updateState { it.copy(draft = value, errorMessage = null) }
     }
 
     fun save() {
-        updateState { state ->
-            val link = state.draft.trim()
-            TradeLinkPreferences.setTradeLink(if (link.isEmpty()) null else link)
-            val newCurrent = TradeLinkPreferences.getTradeLink()
-            state.copy(currentLink = newCurrent, draft = newCurrent ?: "", isSaved = true)
+        launch {
+            val link = uiState.value.draft.trim()
+            updateState { it.copy(isSaving = true, errorMessage = null, isSaved = false) }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    RetrofitProvider.create(AuthApiService::class.java).patchTradeLink(
+                        UpdateTradeLinkRequestDto(if (link.isEmpty()) null else link)
+                    )
+                }
+            }.fold(
+                onSuccess = { me ->
+                    val saved = me.steamTradeLink?.trim()?.takeIf { it.isNotEmpty() }
+                    TradeLinkPreferences.setTradeLink(saved)
+                    updateState {
+                        TradeLinkUiState(
+                            currentLink = saved,
+                            draft = saved ?: "",
+                            isSaved = true,
+                            isSaving = false,
+                            errorMessage = null
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    updateState {
+                        it.copy(isSaving = false, isSaved = false, errorMessage = e.message)
+                    }
+                }
+            )
         }
     }
 
     fun delete() {
-        TradeLinkPreferences.setTradeLink(null)
-        updateState { it.copy(currentLink = null, draft = "", isSaved = true) }
+        launch {
+            updateState { it.copy(isSaving = true, errorMessage = null, isSaved = false) }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    RetrofitProvider.create(AuthApiService::class.java).patchTradeLink(UpdateTradeLinkRequestDto(null))
+                }
+            }.fold(
+                onSuccess = {
+                    TradeLinkPreferences.setTradeLink(null)
+                    updateState {
+                        TradeLinkUiState(
+                            currentLink = null,
+                            draft = "",
+                            isSaved = true,
+                            isSaving = false,
+                            errorMessage = null
+                        )
+                    }
+                },
+                onFailure = { e ->
+                    updateState {
+                        it.copy(isSaving = false, isSaved = false, errorMessage = e.message)
+                    }
+                }
+            )
+        }
     }
 }

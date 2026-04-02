@@ -19,5 +19,9 @@ data class Skin(
     val keychainNames: List<String> = emptyList(),
     val rarity: SkinRarity? = null,
     val collection: String? = null,
-    val wear: SkinWear? = null
+    val wear: SkinWear? = null,
+    /** Владелец набора в ленте обменов (для GET trade-link при открытии карточки). */
+    val offerOwnerSteamId: String? = null,
+    /** Экземпляр из Steam-инвентаря (assetId), если строка пришла с GET /api/v1/inventory. */
+    val inventoryAssetId: String? = null
 )

@@ -2,6 +2,7 @@ package ru.kotlix.skinshowcase.data
 
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
 import ru.kotlix.skinshowcase.screens.profile.OfferSummary
 import ru.kotlix.skinshowcase.screens.profile.ProfileUiState
 import ru.kotlix.skinshowcase.screens.profile.SellerInfo
@@ -24,10 +25,16 @@ object ProfileDataProvider {
     fun consumeOffersNeedRefresh(): Boolean = offersNeedRefresh.also { offersNeedRefresh = false }
 
     suspend fun getProfileState(): ProfileUiState {
-        val tradeLink = TradeLinkPreferences.getTradeLink()
+        val tradeLinkPref = TradeLinkPreferences.getTradeLink()
         val me = runCatching {
             RetrofitProvider.create(AuthApiService::class.java).getMe()
         }.getOrNull()
+        me?.steamId?.trim()?.takeIf { it.length == 17 }?.let { CurrentUser.steamId = it }
+        val serverLink = me?.steamTradeLink?.trim()?.takeIf { it.isNotEmpty() }
+        if (serverLink != null) {
+            TradeLinkPreferences.setTradeLink(serverLink)
+        }
+        val tradeLink = serverLink ?: tradeLinkPref
         return ProfileUiState(
             steamNickname = "",
             steamAvatarUrl = null,
@@ -38,6 +45,14 @@ object ProfileDataProvider {
             showProfile = PrivacyPreferences.getShowProfile(),
             showOffers = PrivacyPreferences.getShowOffers()
         )
+    }
+
+    suspend fun getTradeLinkForSteamId(steamId: String): String? {
+        val trimmed = steamId.trim()
+        if (trimmed.length != 17) return null
+        return runCatching {
+            RetrofitProvider.create(AuthApiService::class.java).getUserTradeLink(trimmed).tradeUrl?.trim()?.takeIf { it.isNotEmpty() }
+        }.getOrNull()
     }
 
     suspend fun getOffers(): List<OfferSummary> = emptyList()

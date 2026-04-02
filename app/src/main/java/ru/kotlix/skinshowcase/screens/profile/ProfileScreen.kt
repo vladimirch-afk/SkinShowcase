@@ -81,6 +81,7 @@ fun ProfileScreen(
     onNavigateToAbout: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToTradeLink: () -> Unit = {},
+    onNavigateToInventorySync: () -> Unit = {},
     onViewAllOffers: () -> Unit = {},
     onCreateOffer: () -> Unit = {},
     onViewFullHistory: () -> Unit = {},
@@ -136,6 +137,9 @@ fun ProfileScreen(
             tradeLink = state.tradeLink,
             onClick = onNavigateToTradeLink
         )
+        Spacer(modifier = Modifier.height(12.dp))
+
+        InventorySyncCard(onClick = onNavigateToInventorySync)
         Spacer(modifier = Modifier.height(12.dp))
 
         ActiveOffersCard(
@@ -224,6 +228,23 @@ private fun TradeLinkCard(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun InventorySyncCard(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    ProfileSectionCard(
+        title = stringResource(R.string.profile_inventory_sync_title),
+        modifier = modifier.clickable(onClick = onClick)
+    ) {
+        Text(
+            text = stringResource(R.string.profile_inventory_sync_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 

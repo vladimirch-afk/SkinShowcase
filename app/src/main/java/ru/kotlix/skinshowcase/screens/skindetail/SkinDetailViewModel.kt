@@ -20,13 +20,26 @@ class SkinDetailViewModel(
     private val skinId: String = savedStateHandle.get<String>(NavRoutes.SKIN_DETAIL_ID_ARG) ?: ""
     private val isOwnOffer: Boolean = savedStateHandle.get<Boolean>(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) ?: false
     private val isCreatingOffer: Boolean = savedStateHandle.get<Boolean>(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) ?: false
+    private val offerOwnerSteamId: String? = savedStateHandle
+        .get<String>(NavRoutes.SKIN_DETAIL_OFFER_OWNER_STEAM_ID_ARG)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && it != "_" }
 
-    private val _uiState = MutableStateFlow(SkinDetailUiState(isCreatingOffer = isCreatingOffer))
+    private val _uiState = MutableStateFlow(
+        SkinDetailUiState(
+            isCreatingOffer = isCreatingOffer,
+            isTradeFeedOffer = offerOwnerSteamId != null
+        )
+    )
     val uiState: StateFlow<SkinDetailUiState> = _uiState.asStateFlow()
 
     init {
         loadSkin(skinId)
-        if (isOwnOffer) loadSeller() else loadOtherSeller()
+        when {
+            isOwnOffer -> loadSeller()
+            offerOwnerSteamId != null -> loadOfferOwner(offerOwnerSteamId)
+            else -> loadOtherSeller()
+        }
     }
 
     private fun loadSeller() {
@@ -53,6 +66,20 @@ class SkinDetailViewModel(
                     )
                 }
             }
+        }
+    }
+
+    private fun loadOfferOwner(steamId: String) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    sellerSteamId = steamId,
+                    sellerNickname = null,
+                    sellerTradeLink = null
+                )
+            }
+            val link = ProfileDataProvider.getTradeLinkForSteamId(steamId)
+            _uiState.update { it.copy(sellerTradeLink = link) }
         }
     }
 
@@ -118,6 +145,7 @@ class SkinDetailViewModel(
 
     fun toggleFavorite() {
         val s = _uiState.value.skin ?: return
+        if (_uiState.value.isTradeFeedOffer) return
         viewModelScope.launch {
             val repo = SkinsProvider.repository
             val added = !s.isFavorite

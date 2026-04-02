@@ -11,5 +11,7 @@ data class HomeUiState(
     val errorMessage: String? = null,
     val filter: SkinFilter = SkinFilter(),
     val filterSheetVisible: Boolean = false,
-    val sortOption: SortOption = SortOption.DEFAULT
+    val sortOption: SortOption = SortOption.DEFAULT,
+    /** true — главная грузит GET /api/v1/trades/feed; фильтр/сортировка применяются на клиенте к полученному списку. */
+    val tradeFeedMode: Boolean = true
 )
