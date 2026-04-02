@@ -164,6 +164,10 @@ fun SkinsShowcaseNavHost(
                     navArgument(NavRoutes.SKIN_DETAIL_OFFER_OWNER_STEAM_ID_ARG) {
                         type = NavType.StringType
                         defaultValue = "_"
+                    },
+                    navArgument(NavRoutes.SKIN_DETAIL_INVENTORY_ASSET_ID_ARG) {
+                        type = NavType.StringType
+                        defaultValue = "_"
                     }
                 )
             ) { backStackEntry ->
@@ -215,8 +219,15 @@ fun SkinsShowcaseNavHost(
             composable(OverlayRoutes.CREATE_OFFER) {
                 CreateOfferSelectSkinScreen(
                     onBack = { navController.popBackStack() },
-                    onSkinClick = { skinId ->
-                        navController.navigate(skinDetailRoute(skinId, isOwnOffer = true, isCreatingOffer = true)) {
+                    onSkinClick = { skinId, inventoryAssetId ->
+                        navController.navigate(
+                            skinDetailRoute(
+                                skinId = skinId,
+                                isOwnOffer = true,
+                                isCreatingOffer = true,
+                                inventoryAssetId = inventoryAssetId
+                            )
+                        ) {
                             popUpTo(OverlayRoutes.CREATE_OFFER) { inclusive = true }
                         }
                     }

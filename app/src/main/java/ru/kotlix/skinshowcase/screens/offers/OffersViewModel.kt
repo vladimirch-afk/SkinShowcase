@@ -8,11 +8,10 @@ class OffersViewModel : BaseViewModel<OffersUiState>() {
 
     override fun initialState(): OffersUiState = OffersUiState(offers = emptyList())
 
-    fun removeOffer(id: String) {
+    fun removeOffer(offer: OfferSummary) {
         launch {
-            val deleted = ProfileDataProvider.deleteOffer(id)
+            val deleted = ProfileDataProvider.deleteOffer(offer)
             if (deleted) refreshOffers()
-            else updateState { it.copy(offers = it.offers.filter { o -> o.id != id }) }
         }
     }
 

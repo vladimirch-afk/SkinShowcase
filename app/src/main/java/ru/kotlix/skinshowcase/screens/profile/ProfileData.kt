@@ -5,10 +5,14 @@ package ru.kotlix.skinshowcase.screens.profile
  */
 data class OfferSummary(
     val id: String,
+    /** classId или запасной ключ для навигации в деталку. */
     val skinId: String,
     val skinName: String,
     val skinImageUrl: String? = null,
-    val priceRub: Double? = null
+    val priceRub: Double? = null,
+    /** Для DELETE …/selection/{steamId}/items */
+    val assetId: String? = null,
+    val classId: String? = null
 )
 
 /**

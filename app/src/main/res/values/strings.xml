@@ -68,6 +68,7 @@
 <string name="profile_support_project_hint">Безвозмездная поддержка разработки</string>
 <string name="skin_detail_suggest_trade">Предложить обмен</string>
     <string name="skin_detail_create_offer">Создать оффер</string>
+<string name="skin_detail_offer_create_failed_title">Не удалось создать оффер</string>
 <string name="skin_detail_float">Флот</string>
 <string name="skin_detail_stickers">Стикеры</string>
 <string name="skin_detail_collection">Коллекция</string>

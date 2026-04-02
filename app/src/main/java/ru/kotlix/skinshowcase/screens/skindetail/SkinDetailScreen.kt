@@ -328,6 +328,18 @@ fun SkinDetailScreen(
                 }
             )
         }
+        state.offerCreateError?.let { err ->
+            AlertDialog(
+                onDismissRequest = viewModel::clearOfferCreateError,
+                title = { Text(stringResource(R.string.skin_detail_offer_create_failed_title)) },
+                text = { Text(err) },
+                confirmButton = {
+                    TextButton(onClick = viewModel::clearOfferCreateError) {
+                        Text(stringResource(R.string.error_dialog_ok))
+                    }
+                }
+            )
+        }
         if (showNoTradeLinkWarning) {
             AlertDialog(
                 onDismissRequest = { showNoTradeLinkWarning = false },

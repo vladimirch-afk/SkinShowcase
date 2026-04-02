@@ -58,7 +58,7 @@ private val GRID_SPACING = 12.dp
 @Composable
 fun CreateOfferSelectSkinScreen(
     onBack: () -> Unit,
-    onSkinClick: (String) -> Unit,
+    onSkinClick: (skinId: String, inventoryAssetId: String?) -> Unit,
     viewModel: CreateOfferSelectSkinViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
@@ -186,7 +186,7 @@ fun CreateOfferSelectSkinScreen(
                         MySkinGridCard(
                             skin = row.skin,
                             stackLabel = row.stackLabel,
-                            onClick = { onSkinClick(row.skin.id) }
+                            onClick = { onSkinClick(row.skin.id, row.skin.inventoryAssetId) }
                         )
                     }
                 }

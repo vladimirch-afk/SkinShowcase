@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.data.ProfileDataProvider
 import ru.kotlix.skinshowcase.navigation.NavRoutes
 
@@ -22,6 +23,11 @@ class SkinDetailViewModel(
     private val isCreatingOffer: Boolean = savedStateHandle.get<Boolean>(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) ?: false
     private val offerOwnerSteamId: String? = savedStateHandle
         .get<String>(NavRoutes.SKIN_DETAIL_OFFER_OWNER_STEAM_ID_ARG)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && it != "_" }
+    /** Из инвентаря при создании оффера (если GET /items/{id} не вернул карточку). */
+    private val navInventoryAssetId: String? = savedStateHandle
+        .get<String>(NavRoutes.SKIN_DETAIL_INVENTORY_ASSET_ID_ARG)
         ?.trim()
         ?.takeIf { it.isNotEmpty() && it != "_" }
 
@@ -124,18 +130,46 @@ class SkinDetailViewModel(
         _uiState.update { it.copy(errorMessage = null) }
     }
 
+    fun clearOfferCreateError() {
+        _uiState.update { it.copy(offerCreateError = null) }
+    }
+
     fun createOffer() {
-        if (skinId.isBlank()) return
+        val loaded = _uiState.value.skin
+        val classId = loaded?.id?.takeIf { it.isNotBlank() } ?: skinId.takeIf { it.isNotBlank() }
+        val assetId = loaded?.inventoryAssetId?.takeIf { it.isNotBlank() } ?: navInventoryAssetId
+        if (classId.isNullOrBlank() && assetId.isNullOrBlank()) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmittingOffer = true) }
-            val success = ProfileDataProvider.createOffer(skinId)
-            _uiState.update {
-                it.copy(
-                    isSubmittingOffer = false,
-                    navigateToMyOffers = success
-                )
-            }
-            if (success) AppAnalytics.reportEvent("offer_created", mapOf("skin_id" to skinId))
+            _uiState.update { it.copy(isSubmittingOffer = true, offerCreateError = null) }
+            val result = ProfileDataProvider.createOffer(
+                classId = classId.orEmpty(),
+                inventoryAssetId = assetId
+            )
+            result.fold(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingOffer = false,
+                            navigateToMyOffers = true,
+                            offerCreateError = null
+                        )
+                    }
+                    AppAnalytics.reportEvent(
+                        "offer_created",
+                        mapOf("skin_id" to (classId ?: assetId ?: ""))
+                    )
+                },
+                onFailure = { e ->
+                    AppAnalytics.reportErrorWithMessage("createOffer", e)
+                    _uiState.update {
+                        it.copy(
+                            isSubmittingOffer = false,
+                            navigateToMyOffers = false,
+                            offerCreateError = e.bestApiMessage()
+                        )
+                    }
+                }
+            )
         }
     }
 

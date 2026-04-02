@@ -12,6 +12,7 @@ data class SkinDetailUiState(
     val isCreatingOffer: Boolean = false,
     val navigateToMyOffers: Boolean = false,
     val isSubmittingOffer: Boolean = false,
+    val offerCreateError: String? = null,
     /** Карточка открыта из ленты трейдов — без избранного, продавец по steamId из фида. */
     val isTradeFeedOffer: Boolean = false
 )

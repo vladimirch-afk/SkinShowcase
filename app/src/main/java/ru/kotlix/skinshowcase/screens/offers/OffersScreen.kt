@@ -33,6 +33,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -53,7 +56,6 @@ import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.screens.profile.OfferSummary
 import ru.kotlix.skinshowcase.components.NetworkImage
-import ru.kotlix.skinshowcase.data.ProfileDataProvider
 
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val CARD_BORDER_DP = 1.dp
@@ -67,10 +69,16 @@ fun OffersScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) {
-        viewModel.refreshOffers()
-        if (ProfileDataProvider.consumeOffersNeedRefresh()) {
-            viewModel.refreshOffers()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshOffers()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
     DisposableEffect(Unit) {
@@ -82,10 +90,10 @@ fun OffersScreen(
         viewModel.clearRefreshing()
     }
 
-    var offerIdToDelete by remember { mutableStateOf<String?>(null) }
-    if (offerIdToDelete != null) {
+    var offerToDelete by remember { mutableStateOf<OfferSummary?>(null) }
+    if (offerToDelete != null) {
         AlertDialog(
-            onDismissRequest = { offerIdToDelete = null },
+            onDismissRequest = { offerToDelete = null },
             title = {
                 Text(
                     text = stringResource(R.string.offers_delete_confirm_title),
@@ -101,8 +109,8 @@ fun OffersScreen(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        offerIdToDelete?.let { viewModel.removeOffer(it) }
-                        offerIdToDelete = null
+                        offerToDelete?.let { viewModel.removeOffer(it) }
+                        offerToDelete = null
                     }
                 ) {
                     Text(
@@ -112,7 +120,7 @@ fun OffersScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { offerIdToDelete = null }) {
+                TextButton(onClick = { offerToDelete = null }) {
                     Text(stringResource(R.string.offers_delete_confirm_cancel))
                 }
             }
@@ -153,7 +161,7 @@ fun OffersScreen(
                     OfferCard(
                         offer = offer,
                         onClick = { onOfferClick(offer.skinId) },
-                        onDelete = { offerIdToDelete = offer.id }
+                        onDelete = { offerToDelete = offer }
                     )
                 }
             }
