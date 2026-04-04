@@ -11,6 +11,15 @@ object SkinFilterApplicator {
         return skins.filter { skin -> matches(skin, filter) }
     }
 
+    /**
+     * Скин проходит непустой [filter] по тем же правилам, что и [apply].
+     * Для пустого фильтра всегда `true` (все подходят).
+     */
+    fun matchesFilter(skin: Skin, filter: SkinFilter): Boolean {
+        if (filter.isEmpty()) return true
+        return matches(skin, filter)
+    }
+
     private fun matches(skin: Skin, filter: SkinFilter): Boolean {
         if (!matchesPrice(skin, filter)) return false
         if (!matchesFloat(skin, filter)) return false

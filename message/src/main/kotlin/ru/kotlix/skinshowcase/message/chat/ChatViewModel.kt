@@ -18,6 +18,9 @@ class ChatViewModel(
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
+    private fun List<MessageItem>.sortedChronologically(): List<MessageItem> =
+        sortedWith(compareBy({ it.timeMillis }, { it.id }))
+
     private val chatId: String = savedStateHandle.get<String>(CHAT_ID_ARG) ?: ""
     private val repository = MessagingProvider.repository
 
@@ -38,7 +41,7 @@ class ChatViewModel(
             when (val result = repository.getMessages(chatId)) {
                 is Result.Success -> _uiState.update {
                     it.copy(
-                        messages = result.data.map { dto -> dto.toMessageItem() },
+                        messages = result.data.map { dto -> dto.toMessageItem() }.sortedChronologically(),
                         isLoading = false,
                         errorMessage = null
                     )
@@ -68,7 +71,7 @@ class ChatViewModel(
             when (val result = repository.sendMessage(chatId, text)) {
                 is Result.Success -> _uiState.update {
                     it.copy(
-                        messages = it.messages + result.data.toMessageItem(),
+                        messages = (it.messages + result.data.toMessageItem()).sortedChronologically(),
                         isSending = false
                     )
                 }

@@ -27,6 +27,7 @@ import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.navigation.SkinsShowcaseNavHost
 import ru.kotlix.skinshowcase.onboarding.OnboardingRoot
 import ru.kotlix.skinshowcase.settings.AuthTokenPreferences
+import ru.kotlix.skinshowcase.settings.TradeLinkPreferences
 
 private const val AUTH_PREFS_NAME = "auth"
 private const val KEY_AUTHORIZED = "authorized"
@@ -65,6 +66,7 @@ class MainActivity : ComponentActivity() {
                             AppAnalytics.reportEvent("logout")
                             AuthTokenPreferences.setToken(null)
                             CurrentUser.steamId = null
+                            TradeLinkPreferences.clearTradeLink()
                             prefs.edit().putBoolean(KEY_AUTHORIZED, false).apply()
                             showOnboarding = true
                         },

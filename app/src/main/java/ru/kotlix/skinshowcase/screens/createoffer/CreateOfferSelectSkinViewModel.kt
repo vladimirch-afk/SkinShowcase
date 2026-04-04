@@ -8,14 +8,20 @@ import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
 import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
 import ru.kotlix.skinshowcase.core.domain.Skin
+import ru.kotlix.skinshowcase.core.domain.SkinFilter
 import ru.kotlix.skinshowcase.core.network.inventory.toInventorySkin
+import ru.kotlix.skinshowcase.screens.home.SortOption
 
 data class CreateOfferSelectSkinUiState(
     val skins: List<Skin> = emptyList(),
     val isLoading: Boolean = true,
     val errorMessage: String? = null,
     /** Группировать карточки по названию предмета и показывать счётчик. */
-    val groupByName: Boolean = false
+    val groupByName: Boolean = false,
+    val searchQuery: String = "",
+    val filter: SkinFilter = SkinFilter(),
+    val filterSheetVisible: Boolean = false,
+    val sortOption: SortOption = SortOption.DEFAULT
 )
 
 class CreateOfferSelectSkinViewModel : BaseViewModel<CreateOfferSelectSkinUiState>() {
@@ -63,5 +69,27 @@ class CreateOfferSelectSkinViewModel : BaseViewModel<CreateOfferSelectSkinUiStat
 
     fun setGroupByName(enabled: Boolean) {
         updateState { it.copy(groupByName = enabled) }
+    }
+
+    fun updateSearch(query: String) {
+        updateState { it.copy(searchQuery = query) }
+    }
+
+    fun openFilterSheet() {
+        updateState { it.copy(filterSheetVisible = true) }
+    }
+
+    fun dismissFilterSheet() {
+        updateState { it.copy(filterSheetVisible = false) }
+    }
+
+    fun applyFilter(filter: SkinFilter) {
+        updateState {
+            it.copy(filter = filter, filterSheetVisible = false)
+        }
+    }
+
+    fun setSortOption(option: SortOption) {
+        updateState { it.copy(sortOption = option) }
     }
 }

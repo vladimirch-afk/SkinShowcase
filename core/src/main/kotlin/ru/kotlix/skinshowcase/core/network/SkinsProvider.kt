@@ -2,6 +2,7 @@ package ru.kotlix.skinshowcase.core.network
 
 import android.content.Context
 import ru.kotlix.skinshowcase.core.database.DatabaseProvider
+import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
 import ru.kotlix.skinshowcase.core.repository.SkinsRepository
 
 /**
@@ -27,7 +28,8 @@ object SkinsProvider {
             val ctx = appContext
                 ?: error("SkinsProvider not initialized. Call SkinsProvider.init(context) in Application.onCreate()")
             val api = injectedApiService ?: RetrofitProvider.create(ApiService::class.java)
+            val inventoryApi = RetrofitProvider.create(InventoryApiService::class.java)
             val db = DatabaseProvider.create(ctx)
-            return SkinsRepository(api, db.favoriteSkinDao(), db.skinCacheDao()).also { cachedRepository = it }
+            return SkinsRepository(api, inventoryApi, db.favoriteSkinDao(), db.skinCacheDao()).also { cachedRepository = it }
         }
 }

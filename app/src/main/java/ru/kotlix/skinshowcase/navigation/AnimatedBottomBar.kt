@@ -42,10 +42,10 @@ import kotlin.math.roundToInt
 private const val INDICATOR_ANIMATION_DURATION_MS = 250
 private val BAR_TOP_RADIUS = 24.dp
 private val BOTTOM_BAR_HEIGHT = 64.dp
-private val INDICATOR_HEIGHT = 40.dp
+/** Высота плашки только под иконку — иначе при центрировании по всей панели низ заходит на подписи. */
+private val INDICATOR_HEIGHT = 32.dp
 private val INDICATOR_WIDTH_DP = 80.dp
 private val INDICATOR_CORNER_RADIUS = 14.dp
-private val INDICATOR_OFFSET_UP = 4.dp
 private val ITEM_VERTICAL_PADDING = 8.dp
 private val ICON_SIZE = 24.dp
 
@@ -81,7 +81,9 @@ fun AnimatedBottomBar(
             val itemWidthPx = with(density) { (maxWidth / items.size).toPx() }
             val indicatorWidthPx = with(density) { INDICATOR_WIDTH_DP.toPx() }
             val indicatorOffsetPx = (animatedPosition * itemWidthPx) + (itemWidthPx - indicatorWidthPx) / 2f
-            val indicatorOffsetYPx = with(density) { INDICATOR_OFFSET_UP.toPx() }
+            val indicatorTopYPx = with(density) {
+                (ITEM_VERTICAL_PADDING + (ICON_SIZE - INDICATOR_HEIGHT) / 2).toPx()
+            }
 
             Box(
                 modifier = Modifier
@@ -90,8 +92,13 @@ fun AnimatedBottomBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .offset { IntOffset(indicatorOffsetPx.roundToInt(), -indicatorOffsetYPx.roundToInt()) }
+                        .align(Alignment.TopStart)
+                        .offset {
+                            IntOffset(
+                                indicatorOffsetPx.roundToInt(),
+                                indicatorTopYPx.roundToInt()
+                            )
+                        }
                         .size(
                             width = INDICATOR_WIDTH_DP,
                             height = INDICATOR_HEIGHT

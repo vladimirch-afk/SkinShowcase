@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -37,7 +39,10 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.OutlinedButton
@@ -69,6 +74,7 @@ import ru.kotlix.skinshowcase.core.domain.SkinRarity
 import ru.kotlix.skinshowcase.core.domain.SkinSpecial
 import ru.kotlix.skinshowcase.core.domain.SkinWear
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
@@ -79,10 +85,12 @@ private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val CARD_BORDER_DP = 1.dp
 private val IMAGE_PLACEHOLDER_SIZE = 72.dp
 private val AVATAR_SIZE = 32.dp
+private val TRADE_FEED_CELL_IMAGE = 56.dp
+private val TRADE_FEED_CELL_WIDTH = 82.dp
 
 @Composable
 fun HomeScreen(
-    onSkinClick: (skinId: String, offerOwnerSteamId: String?) -> Unit = { _, _ -> },
+    onSkinClick: (skinId: String, offerOwnerSteamId: String?, inventoryAssetId: String?) -> Unit = { _, _, _ -> },
     onCreateOffer: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
     modifier: Modifier = Modifier
@@ -105,8 +113,21 @@ fun HomeScreen(
     }
 
     val byFilter = SkinFilterApplicator.apply(state.skins, state.filter)
-    val filteredSkins = filterSkinsByQuery(byFilter, state.searchQuery)
-    val sortedSkins = sortSkins(filteredSkins, state.sortOption)
+    val sortedSkinsCatalog = sortSkins(
+        filterSkinsByQuery(byFilter, state.searchQuery),
+        state.sortOption
+    )
+    val tradeFeedRows = if (state.tradeFeedMode) {
+        buildHomeTradeFeedRows(
+            orderedSkins = state.skins,
+            searchQuery = state.searchQuery,
+            filter = state.filter,
+            sortOption = state.sortOption
+        )
+    } else {
+        emptyList()
+    }
+    val expandedTradeRows = remember { mutableStateMapOf<String, Boolean>() }
 
     if (state.filterSheetVisible) {
         HomeFilterSheet(
@@ -172,7 +193,9 @@ fun HomeScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
             ) {
-                if (state.isLoading && sortedSkins.isEmpty()) {
+                val showTradeLoading = state.tradeFeedMode && state.isLoading && tradeFeedRows.isEmpty()
+                val showCatalogLoading = !state.tradeFeedMode && state.isLoading && sortedSkinsCatalog.isEmpty()
+                if (showTradeLoading || showCatalogLoading) {
                     item {
                         Box(
                             modifier = Modifier.fillMaxWidth(),
@@ -184,16 +207,41 @@ fun HomeScreen(
                         }
                     }
                 }
-                items(
-                    items = sortedSkins,
-                    key = { it.id }
-                ) { skin ->
-                    SkinListingCard(
-                        skin = skin,
-                        onClick = { onSkinClick(skin.id, skin.offerOwnerSteamId) },
-                        onFavoriteClick = { viewModel.toggleFavorite(skin) },
-                        showFavorite = skin.offerOwnerSteamId == null
-                    )
+                if (state.tradeFeedMode) {
+                    items(
+                        items = tradeFeedRows,
+                        key = { it.ownerSteamId }
+                    ) { row ->
+                        TradeFeedOwnerRow(
+                            row = row,
+                            expanded = expandedTradeRows[row.ownerSteamId] == true,
+                            onToggleExpand = {
+                                val next = expandedTradeRows[row.ownerSteamId] != true
+                                expandedTradeRows[row.ownerSteamId] = next
+                            },
+                            onSkinClick = { skin ->
+                                onSkinClick(skin.id, skin.offerOwnerSteamId, skin.inventoryAssetId)
+                            }
+                        )
+                    }
+                } else {
+                    items(
+                        items = sortedSkinsCatalog,
+                        key = { skin ->
+                            listOf(
+                                skin.id,
+                                skin.inventoryAssetId,
+                                skin.offerOwnerSteamId
+                            ).joinToString("|")
+                        }
+                    ) { skin ->
+                        SkinListingCard(
+                            skin = skin,
+                            onClick = { onSkinClick(skin.id, skin.offerOwnerSteamId, skin.inventoryAssetId) },
+                            onFavoriteClick = { viewModel.toggleFavorite(skin) },
+                            showFavorite = skin.offerOwnerSteamId == null
+                        )
+                    }
                 }
                 // Чтобы список всегда скроллился и PullToRefresh срабатывал.
                 item {
@@ -211,9 +259,9 @@ fun HomeScreen(
     }
 }
 
-private data class AppliedFilterChip(val label: String, val tint: Color? = null)
+internal data class AppliedFilterChip(val label: String, val tint: Color? = null)
 
-private fun appliedFilterChips(filter: SkinFilter): List<AppliedFilterChip> {
+internal fun appliedFilterChips(filter: SkinFilter): List<AppliedFilterChip> {
     val list = mutableListOf<AppliedFilterChip>()
     if (filter.priceMin != null || filter.priceMax != null) {
         val s = when {
@@ -259,7 +307,7 @@ private fun appliedFilterChips(filter: SkinFilter): List<AppliedFilterChip> {
 }
 
 @Composable
-private fun AppliedFiltersRow(
+internal fun AppliedFiltersRow(
     filter: SkinFilter,
     onFilterClick: () -> Unit
 ) {
@@ -296,7 +344,7 @@ private fun AppliedFiltersRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SortByRow(
+internal fun SortByRow(
     sortOption: SortOption,
     onSortSelect: (SortOption) -> Unit,
     modifier: Modifier = Modifier
@@ -383,7 +431,7 @@ private fun HomeCreateOfferButton(
 }
 
 @Composable
-private fun HomeTopBar(
+internal fun HomeTopBar(
     searchQuery: String,
     onSearchChange: (String) -> Unit,
     onFilterClick: () -> Unit
@@ -423,6 +471,126 @@ private fun HomeTopBar(
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
+    }
+}
+
+@Composable
+private fun TradeFeedOwnerRow(
+    row: HomeTradeFeedRow,
+    expanded: Boolean,
+    onToggleExpand: () -> Unit,
+    onSkinClick: (Skin) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val hasCarousel = row.carouselSkins.isNotEmpty()
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .border(CARD_BORDER_DP, MaterialTheme.colorScheme.outlineVariant, CARD_SHAPE),
+        shape = CARD_SHAPE,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.home_feed_steam_id, row.ownerSteamId),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                row.primarySkins.forEach { skin ->
+                    TradeFeedSkinCell(
+                        skin = skin,
+                        onClick = { onSkinClick(skin) }
+                    )
+                }
+            }
+            if (hasCarousel) {
+                TextButton(
+                    onClick = onToggleExpand,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (expanded) {
+                            stringResource(R.string.home_feed_collapse_carousel)
+                        } else {
+                            stringResource(R.string.home_feed_more_items, row.carouselSkins.size)
+                        },
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.padding(start = 4.dp)
+                    )
+                }
+                AnimatedVisibility(visible = expanded) {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp)
+                    ) {
+                        items(
+                            items = row.carouselSkins,
+                            key = { s ->
+                                listOf(
+                                    s.offerOwnerSteamId,
+                                    s.id,
+                                    s.inventoryAssetId
+                                ).joinToString("|")
+                            }
+                        ) { skin ->
+                            TradeFeedSkinCell(
+                                skin = skin,
+                                onClick = { onSkinClick(skin) }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TradeFeedSkinCell(
+    skin: Skin,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .width(TRADE_FEED_CELL_WIDTH)
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        NetworkImage(
+            url = skin.imageUrl,
+            contentDescription = skin.name,
+            modifier = Modifier
+                .size(TRADE_FEED_CELL_IMAGE)
+                .clip(RoundedCornerShape(6.dp))
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = skin.name,
+            style = MaterialTheme.typography.labelSmall,
+            maxLines = 2,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
@@ -487,25 +655,6 @@ private fun SkinListingCard(
     }
 }
 
-private fun filterSkinsByQuery(skins: List<Skin>, query: String): List<Skin> {
-    if (query.isBlank()) return skins
-    val lower = query.lowercase()
-    return skins.filter { it.name.lowercase().contains(lower) }
-}
-
-private fun sortSkins(skins: List<Skin>, option: SortOption): List<Skin> {
-    if (option == SortOption.DEFAULT) return skins
-    return when (option) {
-        SortOption.DEFAULT -> skins
-        SortOption.PRICE_ASC -> skins.sortedBy { it.price ?: Double.MAX_VALUE }
-        SortOption.PRICE_DESC -> skins.sortedByDescending { it.price ?: Double.MIN_VALUE }
-        SortOption.FLOAT_ASC -> skins.sortedBy { it.floatValue ?: Double.MAX_VALUE }
-        SortOption.FLOAT_DESC -> skins.sortedByDescending { it.floatValue ?: Double.MIN_VALUE }
-        SortOption.RARITY_ASC -> skins.sortedBy { it.rarity?.ordinal ?: Int.MAX_VALUE }
-        SortOption.RARITY_DESC -> skins.sortedByDescending { it.rarity?.ordinal ?: Int.MIN_VALUE }
-    }
-}
-
 private fun formatPriceRub(price: Double?): String {
     if (price == null) return "—"
     val formatter = java.text.DecimalFormat("#,##0.00")
@@ -517,6 +666,6 @@ private fun formatPriceRub(price: Double?): String {
 @Composable
 private fun HomeScreenPreview() {
     SkinShowcaseTheme {
-        HomeScreen(onSkinClick = { _, _ -> })
+        HomeScreen(onSkinClick = { _, _, _ -> })
     }
 }

@@ -98,8 +98,18 @@ class SkinDetailViewModel(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            val ownerForInventory = when {
+                offerOwnerSteamId != null -> offerOwnerSteamId
+                isCreatingOffer || isOwnOffer -> ProfileDataProvider.resolveCurrentUserSteamId()
+                else -> null
+            }
             runCatching {
-                SkinsProvider.repository.getSkinByIdFromApi(id)
+                SkinsProvider.repository.getSkinByIdFromApi(
+                    id = id,
+                    inventoryOwnerSteamId = ownerForInventory,
+                    inventoryAssetId = navInventoryAssetId,
+                    offerOwnerSteamId = offerOwnerSteamId
+                )
             }.fold(
                 onSuccess = { skin ->
                     _uiState.update {

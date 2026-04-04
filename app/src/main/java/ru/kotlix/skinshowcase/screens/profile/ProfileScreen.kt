@@ -81,7 +81,6 @@ fun ProfileScreen(
     onNavigateToAbout: () -> Unit = {},
     onNavigateToFavorites: () -> Unit = {},
     onNavigateToTradeLink: () -> Unit = {},
-    onNavigateToInventorySync: () -> Unit = {},
     onViewAllOffers: () -> Unit = {},
     onCreateOffer: () -> Unit = {},
     onViewFullHistory: () -> Unit = {},
@@ -127,7 +126,6 @@ fun ProfileScreen(
                 .padding(16.dp)
         ) {
         ProfileHeaderCard(
-            steamNickname = state.steamNickname,
             steamAvatarUrl = state.steamAvatarUrl,
             steamId = state.steamId
         )
@@ -137,9 +135,6 @@ fun ProfileScreen(
             tradeLink = state.tradeLink,
             onClick = onNavigateToTradeLink
         )
-        Spacer(modifier = Modifier.height(12.dp))
-
-        InventorySyncCard(onClick = onNavigateToInventorySync)
         Spacer(modifier = Modifier.height(12.dp))
 
         ActiveOffersCard(
@@ -232,25 +227,7 @@ private fun TradeLinkCard(
 }
 
 @Composable
-private fun InventorySyncCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ProfileSectionCard(
-        title = stringResource(R.string.profile_inventory_sync_title),
-        modifier = modifier.clickable(onClick = onClick)
-    ) {
-        Text(
-            text = stringResource(R.string.profile_inventory_sync_subtitle),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
 private fun ProfileHeaderCard(
-    steamNickname: String,
     steamAvatarUrl: String?,
     steamId: String?,
     modifier: Modifier = Modifier
@@ -303,27 +280,13 @@ private fun ProfileHeaderCard(
                         )
                     }
                 }
-                Column {
+                Column(verticalArrangement = Arrangement.Center) {
                     Text(
-                        text = stringResource(R.string.profile_your_profile),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = steamNickname.ifEmpty { "—" },
+                        text = steamId?.takeIf { it.isNotBlank() } ?: "—",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    if (!steamId.isNullOrBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "${stringResource(R.string.profile_steam_id)}: $steamId",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
         }

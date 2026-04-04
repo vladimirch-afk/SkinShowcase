@@ -7,8 +7,9 @@ import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
  * isOutgoing вычисляется по CurrentUser.steamId.
  */
 fun MessageResponseDto.toMessageDto(): MessageDto {
-    val mySteamId = CurrentUser.steamId
-    val isOutgoing = mySteamId != null && senderSteamId == mySteamId
+    val mySteamId = CurrentUser.steamId?.trim()?.takeIf { it.isNotEmpty() }
+    val sender = senderSteamId.trim()
+    val isOutgoing = mySteamId != null && sender == mySteamId
     val timeMillis = parseCreatedAtToMillis(createdAt)
     return MessageDto(
         id = id,

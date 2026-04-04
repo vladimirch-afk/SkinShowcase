@@ -3,12 +3,14 @@ package ru.kotlix.skinshowcase.data
 import ru.kotlix.skinshowcase.core.network.ApiService
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.SkinDto
+import ru.kotlix.skinshowcase.core.network.toSkinDto
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
 import ru.kotlix.skinshowcase.core.network.trades.CreateTradeSelectionRequestDto
 import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
 import ru.kotlix.skinshowcase.core.network.inventory.InventoryItemDto
 import ru.kotlix.skinshowcase.core.network.inventory.steamEconomyImageUrl
+import retrofit2.HttpException
 import ru.kotlix.skinshowcase.core.network.trades.SelectedItemDto
 import ru.kotlix.skinshowcase.core.network.trades.TradesApiService
 import ru.kotlix.skinshowcase.screens.profile.OfferSummary
@@ -19,7 +21,7 @@ import ru.kotlix.skinshowcase.settings.TradeLinkPreferences
 
 /**
  * Единый источник данных профиля и офферов.
- * Набор для обмена: GET/PUT/DELETE api/v1/trades/selection/{steamId} (+ …/items для удаления позиций).
+ * Набор для обмена: GET / PUT / DELETE `api/v1/trades/selection/{steamId}`; DELETE `…/items` — точечное удаление.
  */
 object ProfileDataProvider {
 
@@ -39,6 +41,9 @@ object ProfileDataProvider {
         }.getOrNull()?.also { CurrentUser.steamId = it }
     }
 
+    /** SteamID64 для запросов к своему инвентарю (кэш + GET /me при необходимости). */
+    suspend fun resolveCurrentUserSteamId(): String? = resolveSteamId()
+
     suspend fun getProfileState(): ProfileUiState {
         val tradeLinkPref = TradeLinkPreferences.getTradeLink()
         val me = runCatching {
@@ -48,14 +53,21 @@ object ProfileDataProvider {
         val serverLink = me?.steamTradeLink?.trim()?.takeIf { it.isNotEmpty() }
         if (serverLink != null) {
             TradeLinkPreferences.setTradeLink(serverLink)
+        } else if (me != null) {
+            TradeLinkPreferences.setTradeLink(null)
         }
-        val tradeLink = serverLink ?: tradeLinkPref
+        val tradeLink = when {
+            serverLink != null -> serverLink
+            me != null -> null
+            else -> tradeLinkPref
+        }
+        val activeOffers = getOffers()
         return ProfileUiState(
             steamNickname = "",
             steamAvatarUrl = null,
             steamId = me?.steamId,
             tradeLink = tradeLink,
-            activeOffers = emptyList(),
+            activeOffers = activeOffers,
             dealHistory = emptyList(),
             showProfile = PrivacyPreferences.getShowProfile(),
             showOffers = PrivacyPreferences.getShowOffers()
@@ -93,7 +105,7 @@ object ProfileDataProvider {
         for (sel in rawItems) {
             val cid = sel.classId?.trim()?.takeIf { it.isNotEmpty() } ?: continue
             if (metaByClassId.containsKey(cid)) continue
-            runCatching { itemsApi.getSkinById(cid) }.getOrNull()?.let { metaByClassId[cid] = it }
+            runCatching { itemsApi.getSkinById(cid).toSkinDto() }.getOrNull()?.let { metaByClassId[cid] = it }
         }
 
         return rawItems.mapIndexed { index, sel ->
@@ -147,7 +159,8 @@ object ProfileDataProvider {
     }
 
     /**
-     * Добавить предмет в набор: GET текущего набора, мерж, PUT полный список.
+     * Добавить предмет в оффер: прочитать текущий набор, объединить с новым,
+     * затем `DELETE /api/v1/trades/selection/{steamId}` и `PUT` полным списком (старые + новый).
      */
     suspend fun createOffer(classId: String, inventoryAssetId: String?): Result<Unit> {
         return runCatching {
@@ -159,27 +172,20 @@ object ProfileDataProvider {
             }
             val newItem = SelectedItemDto(assetId = a, classId = c.takeIf { it.isNotEmpty() })
             val api = RetrofitProvider.create(TradesApiService::class.java)
-            val existing = runCatching { api.getTradeSelection(steamId) }.getOrNull()
-            val merged = mergeSelectionItems(existing?.items.orEmpty(), newItem)
+            val existingItems = try {
+                api.getTradeSelection(steamId).items.orEmpty()
+            } catch (e: HttpException) {
+                if (e.code() == 404) emptyList() else throw e
+            }
+            val merged = mergeSelectionItems(existingItems, newItem)
+            try {
+                api.deleteTradeSelection(steamId)
+            } catch (e: HttpException) {
+                if (e.code() != 404) throw e
+            }
             api.upsertTradeSelection(steamId, CreateTradeSelectionRequestDto(items = merged))
             markOffersNeedRefresh()
         }
-    }
-
-    suspend fun deleteOffer(offer: OfferSummary): Boolean {
-        val steamId = resolveSteamId() ?: return false
-        val cid = offer.classId?.trim()?.takeIf { it.isNotEmpty() }
-            ?: offer.skinId.trim().takeIf { it.isNotEmpty() }
-        val aid = offer.assetId?.trim()?.takeIf { it.isNotEmpty() }
-        if (cid.isNullOrEmpty() && aid.isNullOrEmpty()) return false
-        val item = SelectedItemDto(assetId = aid, classId = cid)
-        return runCatching {
-            RetrofitProvider.create(TradesApiService::class.java).removeTradeSelectionItems(
-                steamId,
-                CreateTradeSelectionRequestDto(items = listOf(item))
-            )
-            true
-        }.getOrDefault(false)
     }
 
     private fun mergeSelectionItems(
@@ -201,6 +207,22 @@ object ProfileDataProvider {
         val ac = a.classId?.trim().orEmpty()
         val bc = b.classId?.trim().orEmpty()
         return ac.isNotEmpty() && ac == bc && aa == ba
+    }
+
+    suspend fun deleteOffer(offer: OfferSummary): Boolean {
+        val steamId = resolveSteamId() ?: return false
+        val cid = offer.classId?.trim()?.takeIf { it.isNotEmpty() }
+            ?: offer.skinId.trim().takeIf { it.isNotEmpty() }
+        val aid = offer.assetId?.trim()?.takeIf { it.isNotEmpty() }
+        if (cid.isNullOrEmpty() && aid.isNullOrEmpty()) return false
+        val item = SelectedItemDto(assetId = aid, classId = cid)
+        return runCatching {
+            RetrofitProvider.create(TradesApiService::class.java).removeTradeSelectionItems(
+                steamId,
+                CreateTradeSelectionRequestDto(items = listOf(item))
+            )
+            true
+        }.getOrDefault(false)
     }
 
     private fun SelectedItemDto.toOfferSummary(index: Int): OfferSummary {

@@ -12,6 +12,7 @@ import ru.kotlix.skinshowcase.core.network.messaging.MessagingApiService
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessageDto
 import ru.kotlix.skinshowcase.core.network.messaging.SendMessageRequest
+import ru.kotlix.skinshowcase.core.network.messaging.toMessageDto
 
 /**
  * Репозиторий сообщений: чаты и сообщения через [MessagingApiService] с кэшем в Room.
@@ -42,9 +43,10 @@ class MessagingRepository(
         return runCatching { api.getMessages(apiChatId) }
             .fold(
                 onSuccess = { list ->
+                    val dtos = list.map { it.toMessageDto() }
                     messageCacheDao.deleteByChatId(chatId)
-                    messageCacheDao.insertAll(list.map { it.toCachedMessageEntity(chatId) })
-                    Result.Success(list)
+                    messageCacheDao.insertAll(dtos.map { it.toCachedMessageEntity(chatId) })
+                    Result.Success(dtos)
                 },
                 onFailure = {
                     val cached = messageCacheDao.getByChatId(chatId).map { it.toMessageDto() }
@@ -57,7 +59,8 @@ class MessagingRepository(
         val apiChatId = MessagingChatPaths.steamIdForApiPath(chatId)
         return runCatching { api.sendMessage(apiChatId, SendMessageRequest(text)) }
             .fold(
-                onSuccess = { msg ->
+                onSuccess = { raw ->
+                    val msg = raw.toMessageDto()
                     messageCacheDao.insert(msg.toCachedMessageEntity(chatId))
                     Result.Success(msg)
                 },

@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.navigation.chatRoute
 import ru.kotlix.skinshowcase.navigation.documentRoute
 import ru.kotlix.skinshowcase.R
@@ -38,8 +39,8 @@ import ru.kotlix.skinshowcase.data.ProfileDataProvider
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.screens.offers.OffersScreen
 import ru.kotlix.skinshowcase.screens.skindetail.SkinDetailScreen
+import ru.kotlix.skinshowcase.screens.skindetail.SkinDetailViewModel
 import ru.kotlix.skinshowcase.screens.supportproject.SupportProjectScreen
-import ru.kotlix.skinshowcase.screens.inventorysync.InventorySyncScreen
 
 private const val TAB_ANIMATION_DURATION_MS = 300
 
@@ -104,15 +105,29 @@ fun SkinsShowcaseNavHost(
         ) {
             composable(TabRoutes.HOME) {
                 HomeScreen(
-                    onSkinClick = { skinId, offerOwnerSteamId ->
-                        navController.navigate(skinDetailRoute(skinId, offerOwnerSteamId = offerOwnerSteamId))
+                    onSkinClick = { skinId, offerOwnerSteamId, inventoryAssetId ->
+                        navController.navigate(
+                            skinDetailRoute(
+                                skinId = skinId,
+                                offerOwnerSteamId = offerOwnerSteamId,
+                                inventoryAssetId = inventoryAssetId
+                            )
+                        )
                     },
                     onCreateOffer = { navController.navigate(OverlayRoutes.CREATE_OFFER) }
                 )
             }
             composable(TabRoutes.SKINS) {
                 OffersScreen(
-                    onOfferClick = { skinId -> navController.navigate(skinDetailRoute(skinId, isOwnOffer = true)) },
+                    onOfferClick = { skinId, inventoryAssetId ->
+                        navController.navigate(
+                            skinDetailRoute(
+                                skinId = skinId,
+                                isOwnOffer = true,
+                                inventoryAssetId = inventoryAssetId
+                            )
+                        )
+                    },
                     onCreateOffer = { navController.navigate(OverlayRoutes.CREATE_OFFER) }
                 )
             }
@@ -150,7 +165,6 @@ fun SkinsShowcaseNavHost(
                     onDocumentClick = { documentId ->
                         navController.navigate(documentRoute(documentId))
                     },
-                    onNavigateToInventorySync = { navController.navigate(OverlayRoutes.INVENTORY_SYNC) },
                     onLogout = onLogout
                 )
             }
@@ -174,10 +188,12 @@ fun SkinsShowcaseNavHost(
                 val skinId = backStackEntry.arguments?.getString(NavRoutes.SKIN_DETAIL_ID_ARG) ?: ""
                 val isOwnOffer = backStackEntry.arguments?.getBoolean(NavRoutes.SKIN_DETAIL_IS_OWN_OFFER_ARG) ?: false
                 val isCreatingOffer = backStackEntry.arguments?.getBoolean(NavRoutes.SKIN_DETAIL_IS_CREATING_OFFER_ARG) ?: false
+                val skinDetailViewModel: SkinDetailViewModel = viewModel(viewModelStoreOwner = backStackEntry)
                 SkinDetailScreen(
                     skinId = skinId,
                     isOwnOffer = isOwnOffer,
                     isCreatingOffer = isCreatingOffer,
+                    viewModel = skinDetailViewModel,
                     onBack = { navController.popBackStack() },
                     onOfferCreated = {
                         ProfileDataProvider.markOffersNeedRefresh()
@@ -206,9 +222,6 @@ fun SkinsShowcaseNavHost(
             }
             composable(OverlayRoutes.TRADE_LINK) {
                 TradeLinkScreen(onBack = { navController.popBackStack() })
-            }
-            composable(OverlayRoutes.INVENTORY_SYNC) {
-                InventorySyncScreen(onBack = { navController.popBackStack() })
             }
             composable(OverlayRoutes.FAVORITES) {
                 FavoritesScreen(

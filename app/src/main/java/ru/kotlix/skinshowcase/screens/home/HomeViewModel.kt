@@ -9,11 +9,16 @@ import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinFilter
+import ru.kotlix.skinshowcase.core.domain.mapper.toDomain
+import ru.kotlix.skinshowcase.core.network.ApiService
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
+import ru.kotlix.skinshowcase.core.network.inventory.toSkin
+import ru.kotlix.skinshowcase.core.network.toSkinDto
+import ru.kotlix.skinshowcase.core.network.trades.TradeSelectionDto
 import ru.kotlix.skinshowcase.core.network.trades.TradesApiService
-import ru.kotlix.skinshowcase.core.network.trades.toFeedSkin
 
 class HomeViewModel : BaseViewModel<HomeUiState>() {
 
@@ -75,11 +80,71 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
     }
 
     private suspend fun loadTradeFeedSkins(): List<Skin> {
-        val api = RetrofitProvider.create(TradesApiService::class.java)
+        val tradesApi = RetrofitProvider.create(TradesApiService::class.java)
+        val itemsApi = RetrofitProvider.create(ApiService::class.java)
         val exclude = CurrentUser.steamId?.trim()?.takeIf { it.length == 17 }
-        val page = api.getFeed(page = 0, size = 50, excludeSteamId = exclude)
-        return page.content.mapNotNull { it.toFeedSkin() }
+        val content = tradesApi.getFeed(page = 0, size = 50, excludeSteamId = exclude).content
+        val inventoryApi = RetrofitProvider.create(InventoryApiService::class.java)
+        return hydrateTradeFeedSelections(content, itemsApi, inventoryApi)
     }
+
+    /**
+     * Карточки ленты: сначала каталог [ApiService.getSkinById] (название/цена),
+     * если предмета нет в БД items (404) — [InventoryApiService.getInventoryItemDetail] по владельцу ленты,
+     * иначе заглушка, чтобы оффер всё равно отображался.
+     */
+    private suspend fun hydrateTradeFeedSelections(
+        content: List<TradeSelectionDto>,
+        itemsApi: ApiService,
+        inventoryApi: InventoryApiService
+    ): List<Skin> {
+        val catalogByClassId = mutableMapOf<String, Skin>()
+        val result = mutableListOf<Skin>()
+        for (selection in content) {
+            val owner = selection.steamId?.trim().orEmpty()
+            if (owner.length != 17 || !owner.all { it.isDigit() }) continue
+            for (item in selection.items.orEmpty()) {
+                val classId = item.classId?.trim()?.takeIf { it.isNotEmpty() } ?: continue
+                val assetId = item.assetId?.trim()?.takeIf { it.isNotEmpty() }
+                val resolved = catalogByClassId[classId] ?: run {
+                    val fromCatalog = runCatching {
+                        itemsApi.getSkinById(classId).toSkinDto().toDomain(isFavorite = false)
+                    }.getOrNull()
+                    if (fromCatalog != null) {
+                        catalogByClassId[classId] = fromCatalog
+                        fromCatalog
+                    } else if (!assetId.isNullOrEmpty()) {
+                        runCatching {
+                            inventoryApi.getInventoryItemDetail(
+                                steamId = owner,
+                                assetId = assetId,
+                                classId = classId
+                            ).toSkin(isFavorite = false, offerOwnerSteamId = owner)
+                        }.getOrNull()
+                    } else {
+                        null
+                    }
+                } ?: tradeFeedPlaceholderSkin(classId, assetId)
+                result.add(
+                    resolved.copy(
+                        offerOwnerSteamId = owner,
+                        inventoryAssetId = assetId,
+                        isFavorite = false
+                    )
+                )
+            }
+        }
+        return result
+    }
+
+    private fun tradeFeedPlaceholderSkin(classId: String, assetId: String?): Skin =
+        Skin(
+            id = classId,
+            name = "Предмет",
+            imageUrl = null,
+            price = null,
+            inventoryAssetId = assetId
+        )
 
     fun clearError() {
         updateState { it.copy(errorMessage = null) }

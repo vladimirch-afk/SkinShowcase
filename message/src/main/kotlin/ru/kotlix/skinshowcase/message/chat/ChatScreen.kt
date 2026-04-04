@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -97,17 +99,23 @@ fun ChatScreen(
                 .padding(innerPadding)
         ) {
             var messageIdToDelete by remember { mutableStateOf<String?>(null) }
+            val listState = rememberLazyListState()
+            LaunchedEffect(state.messages.size, state.messages.lastOrNull()?.id) {
+                if (state.messages.isNotEmpty()) {
+                    listState.scrollToItem(state.messages.lastIndex)
+                }
+            }
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(top = 8.dp, bottom = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                reverseLayout = true
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(
-                    items = state.messages.reversed(),
+                    items = state.messages,
                     key = { it.id }
                 ) { message ->
                     MessageBubble(

@@ -24,7 +24,6 @@ object OverlayRoutes {
     const val DOCUMENT = "document/{documentId}"
     const val TRADE_LINK = "trade_link"
     const val SUPPORT_PROJECT = "support_project"
-    const val INVENTORY_SYNC = "inventory_sync"
 }
 
 object NavRoutes {

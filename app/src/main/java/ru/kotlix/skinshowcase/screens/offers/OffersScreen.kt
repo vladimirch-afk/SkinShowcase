@@ -63,7 +63,7 @@ private val IMAGE_PLACEHOLDER_SIZE = 72.dp
 
 @Composable
 fun OffersScreen(
-    onOfferClick: (String) -> Unit = {},
+    onOfferClick: (skinId: String, inventoryAssetId: String?) -> Unit = { _, _ -> },
     onCreateOffer: () -> Unit = {},
     viewModel: OffersViewModel = viewModel(),
     modifier: Modifier = Modifier
@@ -160,7 +160,7 @@ fun OffersScreen(
                 items(items = state.offers, key = { it.id }) { offer ->
                     OfferCard(
                         offer = offer,
-                        onClick = { onOfferClick(offer.skinId) },
+                        onClick = { onOfferClick(offer.skinId, offer.assetId) },
                         onDelete = { offerToDelete = offer }
                     )
                 }
@@ -264,6 +264,6 @@ private fun formatPriceRub(price: Double?): String {
 @Composable
 private fun OffersScreenPreview() {
     SkinShowcaseTheme {
-        OffersScreen(onOfferClick = {}, onCreateOffer = {})
+        OffersScreen(onOfferClick = { _, _ -> }, onCreateOffer = {})
     }
 }

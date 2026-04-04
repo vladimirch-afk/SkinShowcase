@@ -3,6 +3,10 @@ package ru.kotlix.skinshowcase.screens.skindetail
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import android.text.method.LinkMovementMethod
+import android.util.TypedValue
+import android.widget.TextView
+import androidx.core.text.HtmlCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -44,6 +47,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -67,7 +72,6 @@ import ru.kotlix.skinshowcase.components.NetworkImage
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val IMAGE_HEIGHT = 200.dp
 private val DETAIL_ROW_SPACING = 10.dp
-private val COLUMN_SPACING = 8.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -182,6 +186,30 @@ fun SkinDetailScreen(
             Spacer(modifier = Modifier.height(16.dp))
 
             SkinDetailsGrid(skin = skin)
+            skin?.itemDescription?.trim()?.takeIf { it.isNotEmpty() }?.let { desc ->
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = stringResource(R.string.skin_detail_description),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                SkinDescriptionHtml(html = desc)
+            }
+            skin?.inspectLink?.trim()?.takeIf { it.isNotEmpty() }?.let { link ->
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedButton(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(stringResource(R.string.skin_detail_inspect))
+                }
+            }
             Spacer(modifier = Modifier.height(24.dp))
 
             Card(
@@ -195,39 +223,23 @@ fun SkinDetailScreen(
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(16.dp)
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    Text(
+                        text = stringResource(R.string.skin_detail_seller),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Column {
-                        Text(
-                            text = stringResource(R.string.skin_detail_seller),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = state.sellerNickname ?: stringResource(R.string.skin_detail_seller),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        state.sellerSteamId?.let { steamId ->
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = steamId,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = state.sellerSteamId ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
             if (!isOwnOffer && !state.isCreatingOffer && state.sellerSteamId != null) {
@@ -376,8 +388,56 @@ private fun SkinDetailsGrid(
     modifier: Modifier = Modifier
 ) {
     val noValue = stringResource(R.string.skin_detail_no_value)
-    Row(
+    Column(
         modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        when {
+            skin == null -> SkinDetailsWeaponColumns(skin = null, noValue = noValue)
+            skin.isContainerLikeItem -> SkinDetailsContainerBlock(skin = skin, noValue = noValue)
+            else -> {
+                SkinDetailsWeaponColumns(skin = skin, noValue = noValue)
+                skin.steamItemType?.takeIf { it.isNotBlank() }?.let { typeLine ->
+                    DetailRow(label = stringResource(R.string.skin_detail_type), value = typeLine)
+                }
+                skin.marketHashName?.takeIf { it.isNotBlank() && !it.equals(skin.name, ignoreCase = true) }?.let { mh ->
+                    DetailRow(label = stringResource(R.string.skin_detail_market_hash), value = mh)
+                }
+            }
+        }
+        skin?.extraInfoLines.orEmpty().forEach { line ->
+            DetailRow(label = line.label, value = line.value)
+        }
+    }
+}
+
+@Composable
+private fun SkinDetailsContainerBlock(skin: Skin, noValue: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(DETAIL_ROW_SPACING)) {
+        skin.steamItemType?.takeIf { it.isNotBlank() }?.let { typeLine ->
+            DetailRow(label = stringResource(R.string.skin_detail_type), value = typeLine)
+        }
+        DetailRow(
+            label = stringResource(R.string.skin_detail_collection),
+            value = skin.collection?.takeIf { it.isNotBlank() } ?: noValue
+        )
+        skin.marketHashName?.takeIf { it.isNotBlank() && !it.equals(skin.name, ignoreCase = true) }?.let { mh ->
+            DetailRow(label = stringResource(R.string.skin_detail_market_hash), value = mh)
+        }
+        DetailRow(
+            label = stringResource(R.string.skin_detail_price),
+            value = skin.price?.let { formatPriceUsd(it) } ?: noValue
+        )
+        skin.amount?.takeIf { it > 1 }?.let { amt ->
+            DetailRow(label = stringResource(R.string.skin_detail_amount), value = amt.toString())
+        }
+    }
+}
+
+@Composable
+private fun SkinDetailsWeaponColumns(skin: Skin?, noValue: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Column(
@@ -386,7 +446,7 @@ private fun SkinDetailsGrid(
         ) {
             DetailRow(
                 label = stringResource(R.string.skin_detail_float),
-                value = skin?.floatValue?.toString() ?: noValue
+                value = skin?.floatValue?.let { formatFloatForDisplay(it) } ?: noValue
             )
             DetailRow(
                 label = stringResource(R.string.skin_detail_stickers),
@@ -394,11 +454,11 @@ private fun SkinDetailsGrid(
             )
             DetailRow(
                 label = stringResource(R.string.skin_detail_collection),
-                value = skin?.collection ?: noValue
+                value = skin?.collection?.takeIf { it.isNotBlank() } ?: noValue
             )
             DetailRow(
                 label = stringResource(R.string.skin_detail_price),
-                value = skin?.price?.let { formatPriceRub(it) } ?: noValue
+                value = skin?.price?.let { formatPriceUsd(it) } ?: noValue
             )
             DetailRow(
                 label = stringResource(R.string.skin_detail_keychains),
@@ -418,7 +478,7 @@ private fun SkinDetailsGrid(
                 value = skin?.wear?.displayName ?: noValue
             )
             DetailRow(
-                label = stringResource(R.string.skin_detail_type),
+                label = stringResource(R.string.skin_detail_special),
                 value = skin?.special?.displayName ?: noValue
             )
             DetailRow(
@@ -427,6 +487,34 @@ private fun SkinDetailsGrid(
             )
         }
     }
+}
+
+@Composable
+private fun SkinDescriptionHtml(
+    html: String,
+    modifier: Modifier = Modifier
+) {
+    val textColor = MaterialTheme.colorScheme.onSurface
+    val linkColor = MaterialTheme.colorScheme.primary
+    val body = MaterialTheme.typography.bodyMedium
+    val rawSp = body.fontSize.value
+    val fontSizeSp = if (rawSp in 8f..40f) rawSp else 14f
+    AndroidView(
+        modifier = modifier.fillMaxWidth(),
+        factory = { context ->
+            TextView(context).apply {
+                movementMethod = LinkMovementMethod.getInstance()
+                includeFontPadding = false
+            }
+        },
+        update = { textView ->
+            textView.setTextColor(textColor.toArgb())
+            textView.setLinkTextColor(linkColor.toArgb())
+            textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, fontSizeSp)
+            val normalized = html.replace("\n", "<br/>")
+            textView.text = HtmlCompat.fromHtml(normalized, HtmlCompat.FROM_HTML_MODE_COMPACT)
+        }
+    )
 }
 
 @Composable
@@ -461,10 +549,15 @@ private fun formatKeychains(skin: Skin?): String? {
     return if (skin.hasKeychain) "Да" else null
 }
 
-private fun formatPriceRub(price: Double): String {
-    val formatter = java.text.DecimalFormat("#,##0")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale("ru"))
-    return "${formatter.format(price)} ₽"
+private fun formatPriceUsd(usd: Double): String {
+    val formatter = java.text.DecimalFormat("#,##0.00")
+    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale.US)
+    return "${formatter.format(usd)} USD"
+}
+
+private fun formatFloatForDisplay(value: Double): String {
+    val s = String.format(java.util.Locale.US, "%.8f", value).trimEnd('0').trimEnd('.')
+    return if (s.isEmpty()) value.toString() else s
 }
 
 @Preview(showBackground = true)

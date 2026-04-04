@@ -79,6 +79,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.retrofit)
     implementation(project(":core"))
     implementation(project(":designsystem"))
     implementation(project(":message"))

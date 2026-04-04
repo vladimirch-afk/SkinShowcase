@@ -29,4 +29,9 @@ object TradeLinkPreferences {
     fun setTradeLink(value: String?) {
         prefs?.edit()?.putString(KEY_TRADE_LINK, value?.trim()?.takeIf { it.isNotEmpty() })?.apply()
     }
+
+    /** Сброс при выходе из аккаунта — ссылка привязана к пользователю, не к устройству. */
+    fun clearTradeLink() {
+        prefs?.edit()?.remove(KEY_TRADE_LINK)?.apply()
+    }
 }

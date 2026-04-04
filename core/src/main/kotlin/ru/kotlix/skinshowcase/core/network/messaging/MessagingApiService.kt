@@ -12,13 +12,13 @@ interface MessagingApiService {
     suspend fun getChats(): List<ChatDto>
 
     @GET("api/chats/{chatId}/messages")
-    suspend fun getMessages(@Path("chatId") chatId: String): List<MessageDto>
+    suspend fun getMessages(@Path("chatId") chatId: String): List<MessageResponseDto>
 
     @POST("api/chats/{chatId}/messages")
     suspend fun sendMessage(
         @Path("chatId") chatId: String,
         @Body body: SendMessageRequest
-    ): MessageDto
+    ): MessageResponseDto
 
     @DELETE("api/chats/{chatId}/messages/{messageId}")
     suspend fun deleteMessage(

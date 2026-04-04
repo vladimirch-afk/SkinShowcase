@@ -3,6 +3,7 @@ package ru.kotlix.skinshowcase.core.database.mapper
 import ru.kotlix.skinshowcase.core.database.entity.CachedChatEntity
 import ru.kotlix.skinshowcase.core.database.entity.CachedMessageEntity
 import ru.kotlix.skinshowcase.core.database.entity.CachedSkinEntity
+import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.network.SkinDto
 import ru.kotlix.skinshowcase.core.network.messaging.ChatDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessageDto
@@ -21,6 +22,23 @@ fun SkinDto.toCachedSkinEntity(orderIndex: Int): CachedSkinEntity =
         special = special,
         patternIndex = patternIndex,
         keychainNamesJson = listToJson(keychainNames),
+        orderIndex = orderIndex
+    )
+
+fun Skin.toCachedSkinEntity(orderIndex: Int): CachedSkinEntity =
+    CachedSkinEntity(
+        id = id,
+        name = name,
+        imageUrl = imageUrl,
+        price = price,
+        floatValue = floatValue,
+        stickerNamesJson = listToJson(stickerNames.takeIf { it.isNotEmpty() }),
+        collection = collection,
+        rarity = rarity?.name,
+        wear = wear?.name,
+        special = special?.name,
+        patternIndex = patternIndex,
+        keychainNamesJson = listToJson(keychainNames.takeIf { it.isNotEmpty() }),
         orderIndex = orderIndex
     )
 

@@ -1,6 +1,7 @@
 package ru.kotlix.skinshowcase.core.network.trades
 
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PUT
@@ -19,6 +20,10 @@ interface TradesApiService {
     /** Текущий набор предметов пользователя для обмена. */
     @GET("api/v1/trades/selection/{steamId}")
     suspend fun getTradeSelection(@Path("steamId") steamId: String): TradeSelectionDto
+
+    /** Удалить весь набор предметов для обмена (перед созданием нового оффера). */
+    @DELETE("api/v1/trades/selection/{steamId}")
+    suspend fun deleteTradeSelection(@Path("steamId") steamId: String)
 
     /** Создать или полностью заменить набор (клиент при добавлении оффера мержит список и шлёт итог). */
     @PUT("api/v1/trades/selection/{steamId}")

@@ -46,7 +46,14 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.core.domain.Skin
+import ru.kotlix.skinshowcase.core.domain.SkinFilterApplicator
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
+import ru.kotlix.skinshowcase.screens.home.AppliedFiltersRow
+import ru.kotlix.skinshowcase.screens.home.HomeFilterSheet
+import ru.kotlix.skinshowcase.screens.home.HomeTopBar
+import ru.kotlix.skinshowcase.screens.home.SortByRow
+import ru.kotlix.skinshowcase.screens.home.filterSkinsByQuery
+import ru.kotlix.skinshowcase.screens.home.sortSkins
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.components.NetworkImage
 
@@ -66,6 +73,14 @@ fun CreateOfferSelectSkinScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadSkins()
+    }
+
+    if (state.filterSheetVisible) {
+        HomeFilterSheet(
+            currentFilter = state.filter,
+            onDismiss = viewModel::dismissFilterSheet,
+            onApply = viewModel::applyFilter
+        )
     }
 
     Column(
@@ -143,51 +158,92 @@ fun CreateOfferSelectSkinScreen(
                 )
             }
         } else {
-            val rows = remember(state.skins, state.groupByName) {
-                state.skins.toInventoryGridRows(state.groupByName)
+            val filteredSkins = remember(
+                state.skins,
+                state.filter,
+                state.searchQuery,
+                state.sortOption
+            ) {
+                val byFilter = SkinFilterApplicator.apply(state.skins, state.filter)
+                sortSkins(
+                    filterSkinsByQuery(byFilter, state.searchQuery),
+                    state.sortOption
+                )
             }
             Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.create_offer_group_by_name),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Switch(
-                        checked = state.groupByName,
-                        onCheckedChange = viewModel::setGroupByName,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                HomeTopBar(
+                    searchQuery = state.searchQuery,
+                    onSearchChange = viewModel::updateSearch,
+                    onFilterClick = viewModel::openFilterSheet
+                )
+                AppliedFiltersRow(
+                    filter = state.filter,
+                    onFilterClick = viewModel::openFilterSheet
+                )
+                SortByRow(
+                    sortOption = state.sortOption,
+                    onSortSelect = viewModel::setSortOption
+                )
+                if (filteredSkins.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = stringResource(R.string.create_offer_no_filter_matches),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                    )
-                }
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(GRID_COLUMNS),
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
-                    verticalArrangement = Arrangement.spacedBy(GRID_SPACING)
-                ) {
-                    itemsIndexed(
-                        items = rows,
-                        key = { index, row ->
-                            row.stableGridKey(index)
+                    }
+                } else {
+                    val rows = remember(filteredSkins, state.groupByName) {
+                        filteredSkins.toInventoryGridRows(state.groupByName)
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = stringResource(R.string.create_offer_group_by_name),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = state.groupByName,
+                            onCheckedChange = viewModel::setGroupByName,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                            )
+                        )
+                    }
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(GRID_COLUMNS),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(GRID_SPACING),
+                        verticalArrangement = Arrangement.spacedBy(GRID_SPACING)
+                    ) {
+                        itemsIndexed(
+                            items = rows,
+                            key = { index, row ->
+                                row.stableGridKey(index)
+                            }
+                        ) { _, row ->
+                            MySkinGridCard(
+                                skin = row.skin,
+                                stackLabel = row.stackLabel,
+                                onClick = { onSkinClick(row.skin.id, row.skin.inventoryAssetId) }
+                            )
                         }
-                    ) { _, row ->
-                        MySkinGridCard(
-                            skin = row.skin,
-                            stackLabel = row.stackLabel,
-                            onClick = { onSkinClick(row.skin.id, row.skin.inventoryAssetId) }
-                        )
                     }
                 }
             }
