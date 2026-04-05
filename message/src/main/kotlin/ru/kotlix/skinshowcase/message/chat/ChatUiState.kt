@@ -8,5 +8,7 @@ data class ChatUiState(
     val messageDraft: String = "",
     val isLoading: Boolean = false,
     val isSending: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** Есть валидный Steam ID собеседника для POST /auth/users/{steamId}/report. */
+    val canReportCounterparty: Boolean = false
 )

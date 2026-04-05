@@ -232,6 +232,7 @@ fun SkinsShowcaseNavHost(
             composable(OverlayRoutes.CREATE_OFFER) {
                 CreateOfferSelectSkinScreen(
                     onBack = { navController.popBackStack() },
+                    onConfirmCreateOffer = { navController.popBackStack() },
                     onSkinClick = { skinId, inventoryAssetId ->
                         navController.navigate(
                             skinDetailRoute(

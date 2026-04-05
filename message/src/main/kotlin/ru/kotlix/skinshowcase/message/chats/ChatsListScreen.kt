@@ -146,7 +146,7 @@ fun ChatsListScreen(
         val context = LocalContext.current
         DataErrorDialog(
             title = stringResource(R.string.error_data_title),
-            message = stringResource(R.string.error_data_message),
+            message = state.errorMessage ?: stringResource(R.string.error_data_message),
             okText = stringResource(R.string.error_dialog_ok),
             settingsText = stringResource(R.string.error_dialog_settings),
             onDismiss = viewModel::clearError,
@@ -158,10 +158,11 @@ fun ChatsListScreen(
 
     if (showNewChatDialog) {
         NewChatDialog(
+            viewModel = viewModel,
             onDismiss = { showNewChatDialog = false },
             onOpenChat = { steamId ->
                 showNewChatDialog = false
-                if (steamId.isNotBlank()) onChatClick(steamId.trim())
+                onChatClick(steamId)
             }
         )
     }
@@ -258,10 +259,13 @@ private fun isSteamIdOrNickValid(value: String): Boolean = value.isNotBlank()
 
 @Composable
 private fun NewChatDialog(
+    viewModel: ChatsListViewModel,
     onDismiss: () -> Unit,
     onOpenChat: (String) -> Unit
 ) {
     var query by remember { mutableStateOf("") }
+    var resolveError by remember { mutableStateOf<String?>(null) }
+    var resolving by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val trimmed = query.trim()
     val valid = isSteamIdOrNickValid(trimmed)
@@ -270,27 +274,60 @@ private fun NewChatDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.message_new_chat)) },
         text = {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { new -> query = new },
-                label = { Text(stringResource(R.string.message_steam_id_hint)) },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { new ->
+                        query = new
+                        resolveError = null
+                    },
+                    label = { Text(stringResource(R.string.message_steam_id_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !resolving
+                )
+                resolveError?.let { err ->
+                    Text(
+                        text = err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
         },
         confirmButton = {
             Button(
                 onClick = {
                     focusManager.clearFocus()
-                    if (valid) onOpenChat(trimmed)
+                    if (!valid) return@Button
+                    resolving = true
+                    resolveError = null
+                    viewModel.resolveChatRecipient(
+                        trimmed,
+                        onResolved = { steamId ->
+                            resolving = false
+                            onOpenChat(steamId)
+                        },
+                        onError = { msg ->
+                            resolving = false
+                            resolveError = msg
+                        }
+                    )
                 },
-                enabled = valid
+                enabled = valid && !resolving
             ) {
-                Text(stringResource(R.string.message_open_chat))
+                if (resolving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Text(stringResource(R.string.message_open_chat))
+                }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, enabled = !resolving) {
                 Text(stringResource(android.R.string.cancel))
             }
         }

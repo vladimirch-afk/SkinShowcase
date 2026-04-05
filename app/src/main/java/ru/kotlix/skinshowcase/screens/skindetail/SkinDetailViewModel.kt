@@ -7,9 +7,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
+import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.auth.ReportUserRequestDto
 import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.data.ProfileDataProvider
 import ru.kotlix.skinshowcase.navigation.NavRoutes
@@ -85,7 +90,13 @@ class SkinDetailViewModel(
                 )
             }
             val link = ProfileDataProvider.getTradeLinkForSteamId(steamId)
-            _uiState.update { it.copy(sellerTradeLink = link) }
+            val nickname = ProfileDataProvider.getCounterpartyNicknameFromChats(steamId)
+            _uiState.update {
+                it.copy(
+                    sellerTradeLink = link,
+                    sellerNickname = nickname
+                )
+            }
         }
     }
 
@@ -119,6 +130,20 @@ class SkinDetailViewModel(
                             errorMessage = if (skin == null) "Скин не найден" else null
                         )
                     }
+                    if (skin != null && offerOwnerSteamId != null) {
+                        viewModelScope.launch {
+                            val nick = ProfileDataProvider.getCounterpartyNicknameFromChats(offerOwnerSteamId)
+                            if (!nick.isNullOrBlank()) {
+                                _uiState.update { cur ->
+                                    if (cur.sellerNickname.isNullOrBlank()) {
+                                        cur.copy(sellerNickname = nick)
+                                    } else {
+                                        cur
+                                    }
+                                }
+                            }
+                        }
+                    }
                 },
                 onFailure = { e ->
                     AppAnalytics.reportErrorWithMessage("loadSkin($id)", e)
@@ -126,7 +151,7 @@ class SkinDetailViewModel(
                         it.copy(
                             skin = null,
                             isLoading = false,
-                            errorMessage = e.message ?: "Ошибка загрузки"
+                            errorMessage = e.bestApiMessage()
                         )
                     }
                 }
@@ -185,6 +210,36 @@ class SkinDetailViewModel(
 
     fun clearNavigateToMyOffers() {
         _uiState.update { it.copy(navigateToMyOffers = false) }
+    }
+
+    fun reportSeller(reason: String, details: String?, onComplete: (errorMessage: String?) -> Unit) {
+        val steamId = _uiState.value.sellerSteamId?.trim()?.takeIf { it.length == 17 }
+        if (steamId == null) {
+            onComplete("Пользователь не указан")
+            return
+        }
+        val r = reason.trim()
+        if (r.isEmpty()) {
+            onComplete("Укажите причину")
+            return
+        }
+        viewModelScope.launch {
+            val err = runCatching {
+                withContext(Dispatchers.IO) {
+                    RetrofitProvider.create(AuthApiService::class.java).reportUser(
+                        steamId,
+                        ReportUserRequestDto(
+                            reason = r,
+                            details = details?.trim()?.takeIf { it.isNotEmpty() }
+                        )
+                    )
+                }
+            }.exceptionOrNull()
+            onComplete(err?.bestApiMessage())
+            if (err == null) {
+                AppAnalytics.reportEvent("user_report", mapOf("reported_steam_id" to steamId))
+            }
+        }
     }
 
     fun toggleFavorite() {

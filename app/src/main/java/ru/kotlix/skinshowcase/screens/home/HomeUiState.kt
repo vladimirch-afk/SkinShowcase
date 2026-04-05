@@ -2,6 +2,7 @@ package ru.kotlix.skinshowcase.screens.home
 
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinFilter
+import ru.kotlix.skinshowcase.core.network.auth.AvatarUrls
 
 data class HomeUiState(
     val searchQuery: String = "",
@@ -13,5 +14,9 @@ data class HomeUiState(
     val filterSheetVisible: Boolean = false,
     val sortOption: SortOption = SortOption.DEFAULT,
     /** true — главная грузит GET /api/v1/trades/feed; фильтр/сортировка применяются на клиенте к полученному списку. */
-    val tradeFeedMode: Boolean = true
+    val tradeFeedMode: Boolean = true,
+    /** Лента обменов: ключи предметов, отмеченных «лайком» до добавления в избранное. */
+    val tradeFeedLocalLikes: Set<String> = emptySet(),
+    /** Пресетная аватарка текущего пользователя (URL GET /auth/avatars/{id}). */
+    val userAvatarUrl: String = AvatarUrls.userAvatarUrl(null)
 )

@@ -54,6 +54,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -67,12 +70,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.graphics.Color
 import ru.kotlix.skinshowcase.R
+import ru.kotlix.skinshowcase.core.network.auth.AvatarUrls
+import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinFilter
 import ru.kotlix.skinshowcase.core.domain.SkinFilterApplicator
 import ru.kotlix.skinshowcase.core.domain.SkinRarity
 import ru.kotlix.skinshowcase.core.domain.SkinSpecial
 import ru.kotlix.skinshowcase.core.domain.SkinWear
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsd
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsdAmount
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -96,6 +103,16 @@ fun HomeScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshUserAvatarFromCurrentUser()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.loadSkins()
@@ -145,7 +162,10 @@ fun HomeScreen(
         HomeTopBar(
             searchQuery = state.searchQuery,
             onSearchChange = viewModel::updateSearch,
-            onFilterClick = viewModel::openFilterSheet
+            onFilterClick = viewModel::openFilterSheet,
+            userAvatarUrl = state.userAvatarUrl.ifBlank {
+                AvatarUrls.currentUserAvatarDisplayUrl()
+            }
         )
         AppliedFiltersRow(
             filter = state.filter,
@@ -171,7 +191,7 @@ fun HomeScreen(
             val context = LocalContext.current
             DataErrorDialog(
                 title = stringResource(R.string.error_data_title),
-                message = stringResource(R.string.error_data_message),
+                message = state.errorMessage ?: stringResource(R.string.error_data_message),
                 okText = stringResource(R.string.error_dialog_ok),
                 settingsText = stringResource(R.string.error_dialog_settings),
                 onDismiss = viewModel::clearError,
@@ -221,7 +241,12 @@ fun HomeScreen(
                             },
                             onSkinClick = { skin ->
                                 onSkinClick(skin.id, skin.offerOwnerSteamId, skin.inventoryAssetId)
-                            }
+                            },
+                            ownerStarActive = row.ownerHasAnyFavorite(),
+                            onOwnerStarClick = { viewModel.commitTradeFeedLikesForOwner(row.ownerSteamId) },
+                            localLikes = state.tradeFeedLocalLikes,
+                            onToggleLocalLike = { viewModel.toggleTradeFeedLocalLike(it) },
+                            onToggleFavorite = { viewModel.toggleFavorite(it) }
                         )
                     }
                 } else {
@@ -265,9 +290,10 @@ internal fun appliedFilterChips(filter: SkinFilter): List<AppliedFilterChip> {
     val list = mutableListOf<AppliedFilterChip>()
     if (filter.priceMin != null || filter.priceMax != null) {
         val s = when {
-            filter.priceMin != null && filter.priceMax != null -> "Цена: ${filter.priceMin!!.toInt()} – ${filter.priceMax!!.toInt()}"
-            filter.priceMin != null -> "Цена: от ${filter.priceMin!!.toInt()}"
-            else -> "Цена: до ${filter.priceMax!!.toInt()}"
+            filter.priceMin != null && filter.priceMax != null ->
+                "Цена: ${formatSkinPriceUsdAmount(filter.priceMin!!)} – ${formatSkinPriceUsdAmount(filter.priceMax!!)}"
+            filter.priceMin != null -> "Цена: от ${formatSkinPriceUsdAmount(filter.priceMin!!)}"
+            else -> "Цена: до ${formatSkinPriceUsdAmount(filter.priceMax!!)}"
         }
         list.add(AppliedFilterChip(s))
     }
@@ -413,7 +439,7 @@ private fun sortOptionLabelRes(option: SortOption): Int = when (option) {
 }
 
 @Composable
-private fun HomeCreateOfferButton(
+internal fun HomeCreateOfferButton(
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -434,8 +460,11 @@ private fun HomeCreateOfferButton(
 internal fun HomeTopBar(
     searchQuery: String,
     onSearchChange: (String) -> Unit,
-    onFilterClick: () -> Unit
+    onFilterClick: () -> Unit,
+    userAvatarUrl: String? = null
 ) {
+    val avatarUrl = userAvatarUrl?.takeIf { it.isNotBlank() }
+        ?: AvatarUrls.currentUserAvatarDisplayUrl()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -443,6 +472,13 @@ internal fun HomeTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        NetworkImage(
+            url = avatarUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(AVATAR_SIZE)
+                .clip(CircleShape)
+        )
         OutlinedTextField(
             value = searchQuery,
             onValueChange = onSearchChange,
@@ -480,6 +516,11 @@ private fun TradeFeedOwnerRow(
     expanded: Boolean,
     onToggleExpand: () -> Unit,
     onSkinClick: (Skin) -> Unit,
+    ownerStarActive: Boolean,
+    onOwnerStarClick: () -> Unit,
+    localLikes: Set<String>,
+    onToggleLocalLike: (Skin) -> Unit,
+    onToggleFavorite: (Skin) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hasCarousel = row.carouselSkins.isNotEmpty()
@@ -496,12 +537,34 @@ private fun TradeFeedOwnerRow(
                 .fillMaxWidth()
                 .padding(12.dp)
         ) {
-            Text(
-                text = stringResource(R.string.home_feed_steam_id, row.ownerSteamId),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = stringResource(R.string.home_feed_steam_id, row.ownerSteamId),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = onOwnerStarClick,
+                    modifier = Modifier.size(40.dp)
+                ) {
+                    Icon(
+                        imageVector = if (ownerStarActive) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                        contentDescription = stringResource(R.string.home_feed_owner_star_commit),
+                        tint = if (ownerStarActive) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -511,7 +574,11 @@ private fun TradeFeedOwnerRow(
                 row.primarySkins.forEach { skin ->
                     TradeFeedSkinCell(
                         skin = skin,
-                        onClick = { onSkinClick(skin) }
+                        likedLocal = tradeFeedLikeKey(skin) in localLikes,
+                        onClick = { onSkinClick(skin) },
+                        onStarClick = {
+                            if (skin.isFavorite) onToggleFavorite(skin) else onToggleLocalLike(skin)
+                        }
                     )
                 }
             }
@@ -553,7 +620,11 @@ private fun TradeFeedOwnerRow(
                         ) { skin ->
                             TradeFeedSkinCell(
                                 skin = skin,
-                                onClick = { onSkinClick(skin) }
+                                likedLocal = tradeFeedLikeKey(skin) in localLikes,
+                                onClick = { onSkinClick(skin) },
+                                onStarClick = {
+                                    if (skin.isFavorite) onToggleFavorite(skin) else onToggleLocalLike(skin)
+                                }
                             )
                         }
                     }
@@ -566,30 +637,63 @@ private fun TradeFeedOwnerRow(
 @Composable
 private fun TradeFeedSkinCell(
     skin: Skin,
+    likedLocal: Boolean,
     onClick: () -> Unit,
+    onStarClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier
             .width(TRADE_FEED_CELL_WIDTH)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
             .padding(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        NetworkImage(
-            url = skin.imageUrl,
-            contentDescription = skin.name,
+        Box(
             modifier = Modifier
                 .size(TRADE_FEED_CELL_IMAGE)
-                .clip(RoundedCornerShape(6.dp))
-        )
+        ) {
+            NetworkImage(
+                url = skin.imageUrl,
+                contentDescription = skin.name,
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(6.dp))
+                    .clickable(onClick = onClick)
+            )
+            IconButton(
+                onClick = onStarClick,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .size(28.dp)
+            ) {
+                val inFavorites = skin.isFavorite
+                Icon(
+                    imageVector = when {
+                        inFavorites -> Icons.Filled.Star
+                        likedLocal -> Icons.Filled.Star
+                        else -> Icons.Outlined.StarBorder
+                    },
+                    contentDescription = if (inFavorites) {
+                        stringResource(R.string.favorites_remove)
+                    } else {
+                        stringResource(R.string.home_feed_skin_like_toggle)
+                    },
+                    modifier = Modifier.size(18.dp),
+                    tint = when {
+                        inFavorites -> MaterialTheme.colorScheme.primary
+                        likedLocal -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
+                    }
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = skin.name,
             style = MaterialTheme.typography.labelSmall,
             maxLines = 2,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.clickable(onClick = onClick)
         )
     }
 }
@@ -633,7 +737,7 @@ private fun SkinListingCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = formatPriceRub(skin.price),
+                    text = formatSkinPriceUsd(skin.price),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = PriceGreen
@@ -653,13 +757,6 @@ private fun SkinListingCard(
             }
         }
     }
-}
-
-private fun formatPriceRub(price: Double?): String {
-    if (price == null) return "—"
-    val formatter = java.text.DecimalFormat("#,##0.00")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale("ru"))
-    return "${formatter.format(price)} руб."
 }
 
 @Preview(showBackground = true)

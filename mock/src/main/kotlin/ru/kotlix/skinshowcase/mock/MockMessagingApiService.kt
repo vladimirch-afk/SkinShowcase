@@ -18,7 +18,11 @@ class MockMessagingApiService : MessagingApiService {
         return MockData.getChats()
     }
 
-    override suspend fun getMessages(chatId: String): List<MessageResponseDto> {
+    override suspend fun getMessages(
+        chatId: String,
+        page: Int,
+        size: Int
+    ): List<MessageResponseDto> {
         delay(MOCK_DELAY_MS)
         val me = MockData.profileSteamId
         return MockData.getMessages(chatId).map { m ->

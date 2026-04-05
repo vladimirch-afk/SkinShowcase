@@ -4,6 +4,7 @@ import retrofit2.http.GET
 import retrofit2.http.Path
 import retrofit2.http.Query
 
+/** Инвентарь: **api-gateway**, префикс пути `/api/v1/inventory/` → steam-gateway. */
 interface InventoryApiService {
 
     @GET("api/v1/inventory/{steamId}")

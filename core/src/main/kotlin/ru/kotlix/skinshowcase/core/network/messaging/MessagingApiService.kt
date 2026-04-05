@@ -5,14 +5,23 @@ import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 
+/**
+ * Messaging через **api-gateway**: префикс `/api/chats/` → messaging.
+ * На стороне сервиса базовый путь контроллера `/api`, итоговые URL вида `/api/chats/...`.
+ */
 interface MessagingApiService {
 
     @GET("api/chats")
     suspend fun getChats(): List<ChatDto>
 
     @GET("api/chats/{chatId}/messages")
-    suspend fun getMessages(@Path("chatId") chatId: String): List<MessageResponseDto>
+    suspend fun getMessages(
+        @Path("chatId") chatId: String,
+        @Query("page") page: Int = 0,
+        @Query("size") size: Int = 50
+    ): List<MessageResponseDto>
 
     @POST("api/chats/{chatId}/messages")
     suspend fun sendMessage(

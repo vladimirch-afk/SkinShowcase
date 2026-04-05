@@ -13,12 +13,15 @@ import ru.kotlix.skinshowcase.core.domain.mapper.toDomain
 import ru.kotlix.skinshowcase.core.network.ApiService
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.core.network.auth.AvatarUrls
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
 import ru.kotlix.skinshowcase.core.network.inventory.toSkin
 import ru.kotlix.skinshowcase.core.network.toSkinDto
 import ru.kotlix.skinshowcase.core.network.trades.TradeSelectionDto
 import ru.kotlix.skinshowcase.core.network.trades.TradesApiService
+import ru.kotlix.skinshowcase.data.ProfileDataProvider
 
 class HomeViewModel : BaseViewModel<HomeUiState>() {
 
@@ -53,6 +56,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                         it.copy(skins = list, isLoading = false, isRefreshing = false, errorMessage = null)
                     }
                 }
+                refreshUserAvatarUrl()
             } catch (e: Throwable) {
                 if (e !is CancellationException) {
                     AppAnalytics.reportErrorWithMessage("loadSkins", e)
@@ -63,7 +67,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                             it.copy(
                                 isLoading = false,
                                 isRefreshing = false,
-                                errorMessage = e.message ?: "Ошибка загрузки"
+                                errorMessage = e.bestApiMessage()
                             )
                         }
                     }
@@ -77,6 +81,21 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                 }
             }
         }
+    }
+
+    private suspend fun refreshUserAvatarUrl() {
+        withContext(Dispatchers.IO) {
+            ProfileDataProvider.syncCurrentUserFromAuthMe()
+        }
+        val url = AvatarUrls.currentUserAvatarDisplayUrl()
+        withContext(Dispatchers.Main.immediate) {
+            updateState { it.copy(userAvatarUrl = url) }
+        }
+    }
+
+    /** Без сети: подтянуть URL из [CurrentUser] при возврате на вкладку (после смены аватара в профиле). */
+    fun refreshUserAvatarFromCurrentUser() {
+        updateState { it.copy(userAvatarUrl = AvatarUrls.currentUserAvatarDisplayUrl()) }
     }
 
     private suspend fun loadTradeFeedSkins(): List<Skin> {
@@ -98,6 +117,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
         itemsApi: ApiService,
         inventoryApi: InventoryApiService
     ): List<Skin> {
+        val favoriteIds = SkinsProvider.repository.getFavoriteSkinIds()
         val catalogByClassId = mutableMapOf<String, Skin>()
         val result = mutableListOf<Skin>()
         for (selection in content) {
@@ -129,7 +149,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                     resolved.copy(
                         offerOwnerSteamId = owner,
                         inventoryAssetId = assetId,
-                        isFavorite = false
+                        isFavorite = resolved.id in favoriteIds
                     )
                 )
             }
@@ -177,20 +197,71 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
     }
 
     fun toggleFavorite(skin: Skin) {
-        if (skin.offerOwnerSteamId != null) return
         launch {
             val repo = SkinsProvider.repository
             val added = !skin.isFavorite
             if (skin.isFavorite) repo.removeFromFavorites(skin.id)
             else repo.addToFavorites(skin)
+            val likeKey = tradeFeedLikeKey(skin)
             updateState { state ->
+                val nextLikes = if (skin.offerOwnerSteamId != null && added) {
+                    state.tradeFeedLocalLikes - likeKey
+                } else {
+                    state.tradeFeedLocalLikes
+                }
                 state.copy(
                     skins = state.skins.map {
-                        if (it.id == skin.id) it.copy(isFavorite = !it.isFavorite) else it
-                    }
+                        if (matchesTradeFeedSkinSlot(it, skin)) it.copy(isFavorite = !it.isFavorite) else it
+                    },
+                    tradeFeedLocalLikes = nextLikes
                 )
             }
             AppAnalytics.reportEvent(if (added) "favorite_added" else "favorite_removed", mapOf("skin_id" to skin.id))
+        }
+    }
+
+    fun toggleTradeFeedLocalLike(skin: Skin) {
+        if (skin.offerOwnerSteamId == null || skin.isFavorite) return
+        val key = tradeFeedLikeKey(skin)
+        updateState { state ->
+            val next = if (key in state.tradeFeedLocalLikes) {
+                state.tradeFeedLocalLikes - key
+            } else {
+                state.tradeFeedLocalLikes + key
+            }
+            state.copy(tradeFeedLocalLikes = next)
+        }
+    }
+
+    fun commitTradeFeedLikesForOwner(ownerSteamId: String) {
+        launch {
+            val repo = SkinsProvider.repository
+            val snapshot = uiState.value
+            val likes = snapshot.tradeFeedLocalLikes
+            val toAdd = snapshot.skins.filter { candidate ->
+                candidate.offerOwnerSteamId == ownerSteamId &&
+                    tradeFeedLikeKey(candidate) in likes &&
+                    !candidate.isFavorite
+            }
+            for (item in toAdd) {
+                repo.addToFavorites(item)
+            }
+            val keysDone = toAdd.map { tradeFeedLikeKey(it) }.toSet()
+            updateState { state ->
+                state.copy(
+                    tradeFeedLocalLikes = state.tradeFeedLocalLikes - keysDone,
+                    skins = state.skins.map { skin ->
+                        val mark = toAdd.any { matchesTradeFeedSkinSlot(it, skin) }
+                        if (mark) skin.copy(isFavorite = true) else skin
+                    }
+                )
+            }
+            if (toAdd.isNotEmpty()) {
+                AppAnalytics.reportEvent(
+                    "trade_feed_owner_commit_likes",
+                    mapOf("owner_steam_id" to ownerSteamId, "count" to toAdd.size.toString())
+                )
+            }
         }
     }
 }

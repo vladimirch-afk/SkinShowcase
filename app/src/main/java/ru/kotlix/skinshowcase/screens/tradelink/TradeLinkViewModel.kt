@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
 import ru.kotlix.skinshowcase.core.network.auth.UpdateTradeLinkRequestDto
 import ru.kotlix.skinshowcase.settings.TradeLinkPreferences
@@ -48,7 +49,7 @@ class TradeLinkViewModel : BaseViewModel<TradeLinkUiState>() {
                 },
                 onFailure = { e ->
                     updateState {
-                        it.copy(isSaving = false, isSaved = false, errorMessage = e.message)
+                        it.copy(isSaving = false, isSaved = false, errorMessage = e.bestApiMessage())
                     }
                 }
             )
@@ -77,7 +78,7 @@ class TradeLinkViewModel : BaseViewModel<TradeLinkUiState>() {
                 },
                 onFailure = { e ->
                     updateState {
-                        it.copy(isSaving = false, isSaved = false, errorMessage = e.message)
+                        it.copy(isSaving = false, isSaved = false, errorMessage = e.bestApiMessage())
                     }
                 }
             )

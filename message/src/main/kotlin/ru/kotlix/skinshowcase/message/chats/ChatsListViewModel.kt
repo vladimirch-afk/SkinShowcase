@@ -7,6 +7,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import ru.kotlix.skinshowcase.core.Result
 import ru.kotlix.skinshowcase.core.BaseViewModel
+import ru.kotlix.skinshowcase.core.network.RetrofitProvider
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
+import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
 import ru.kotlix.skinshowcase.message.domain.ChatItem
@@ -44,7 +47,10 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                 when (result) {
                     is Result.Success -> {
                         val fromApi = result.data.map { dto -> dto.toChatItem() }
-                        val withSupport = pinnedSupportChat() + fromApi.filter { it.id != SUPPORT_CHAT_ID }
+                        val withSupport = pinnedSupportChat() + fromApi.filter { chat ->
+                            !MessagingChatPaths.isSupportMessagingSteamId(chat.id) &&
+                                chat.id != SUPPORT_CHAT_ID
+                        }
                         updateState {
                             it.copy(
                                 chats = withSupport,
@@ -56,10 +62,13 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                     }
                     is Result.Error -> updateState {
                         it.copy(
-                            chats = pinnedSupportChat() + it.chats.filter { c -> c.id != SUPPORT_CHAT_ID },
+                            chats = pinnedSupportChat() + it.chats.filter { c ->
+                                !MessagingChatPaths.isSupportMessagingSteamId(c.id) &&
+                                    c.id != SUPPORT_CHAT_ID
+                            },
                             isLoading = false,
                             isRefreshing = false,
-                            errorMessage = result.throwable.message ?: "Ошибка загрузки чатов"
+                            errorMessage = result.throwable.bestApiMessage()
                         )
                     }
                     is Result.Loading -> updateState {
@@ -73,7 +82,7 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                             it.copy(
                                 isLoading = false,
                                 isRefreshing = false,
-                                errorMessage = e.message ?: "Ошибка загрузки чатов"
+                                errorMessage = e.bestApiMessage()
                             )
                         }
                     }
@@ -97,6 +106,38 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
         updateState { it.copy(errorMessage = null) }
     }
 
+    /**
+     * Новый чат: 17-значный Steam ID или имя → GET /auth/users/by-username/{username}.
+     */
+    fun resolveChatRecipient(
+        raw: String,
+        onResolved: (steamId: String) -> Unit,
+        onError: (message: String) -> Unit
+    ) {
+        launch {
+            val t = raw.trim()
+            if (t.isEmpty()) {
+                onError("Введите Steam ID или имя")
+                return@launch
+            }
+            if (MessagingChatPaths.isValidSteamId17(t)) {
+                onResolved(t)
+                return@launch
+            }
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    RetrofitProvider.create(AuthApiService::class.java).getSteamIdByUsername(t).steamId.trim()
+                }
+            }.fold(
+                onSuccess = { id ->
+                    if (MessagingChatPaths.isValidSteamId17(id)) onResolved(id)
+                    else onError("Пользователь не найден")
+                },
+                onFailure = { e -> onError(e.bestApiMessage()) }
+            )
+        }
+    }
+
     fun deleteChat(chatId: String) {
         launch {
             when (val result = repository.deleteChat(chatId)) {
@@ -104,7 +145,7 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                     it.copy(chats = it.chats.filter { c -> c.id != chatId })
                 }
                 is Result.Error -> updateState {
-                    it.copy(errorMessage = result.throwable.message ?: "Ошибка удаления чата")
+                    it.copy(errorMessage = result.throwable.bestApiMessage())
                 }
                 is Result.Loading -> { }
             }
@@ -113,8 +154,8 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 
     companion object {
         /**
-         * ID для навигации и списка: реальный SteamID64 поддержки, если задан в `gradle.properties`
-         * (`MESSAGING_SUPPORT_STEAM_ID`), иначе плейсхолдер `support` (только для UI; API всё равно требует 17 цифр).
+         * ID для навигации и закреплённой карточки: при валидном `MESSAGING_SUPPORT_STEAM_ID` в Gradle — он,
+         * иначе плейсхолдер `support`. Сообщения на сервер уходят на [MessagingChatPaths.SUPPORT_MESSAGING_STEAM_ID].
          */
         val SUPPORT_CHAT_ID: String =
             if (MessagingChatPaths.isValidSteamId17(MessagingChatPaths.configuredSupportSteamId)) {
@@ -125,7 +166,8 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 
         fun isSupportChatId(chatId: String): Boolean =
             chatId == MessagingChatPaths.SUPPORT_PLACEHOLDER ||
-                (SUPPORT_CHAT_ID != MessagingChatPaths.SUPPORT_PLACEHOLDER && chatId == SUPPORT_CHAT_ID)
+                (SUPPORT_CHAT_ID != MessagingChatPaths.SUPPORT_PLACEHOLDER && chatId == SUPPORT_CHAT_ID) ||
+                MessagingChatPaths.isSupportMessagingSteamId(chatId)
     }
 }
 

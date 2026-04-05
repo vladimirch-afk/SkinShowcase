@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsd
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 
@@ -102,7 +103,7 @@ fun SkinsScreen(
             val context = LocalContext.current
             DataErrorDialog(
                 title = stringResource(R.string.error_data_title),
-                message = stringResource(R.string.error_data_message),
+                message = state.errorMessage ?: stringResource(R.string.error_data_message),
                 okText = stringResource(R.string.error_dialog_ok),
                 settingsText = stringResource(R.string.error_dialog_settings),
                 onDismiss = viewModel::clearError,
@@ -179,7 +180,7 @@ private fun SkinCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = formatPriceRub(skin.price),
+                    text = formatSkinPriceUsd(skin.price),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = PriceGreen
@@ -193,13 +194,6 @@ private fun SkinCard(
             )
         }
     }
-}
-
-private fun formatPriceRub(price: Double?): String {
-    if (price == null) return "—"
-    val formatter = java.text.DecimalFormat("#,##0.00")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale("ru"))
-    return "${formatter.format(price)} руб."
 }
 
 @Preview(showBackground = true)

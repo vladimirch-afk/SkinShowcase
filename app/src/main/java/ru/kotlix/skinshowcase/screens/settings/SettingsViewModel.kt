@@ -4,8 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
-import ru.kotlix.skinshowcase.core.network.auth.UpdatePrivacyRequestDto
 import ru.kotlix.skinshowcase.settings.PrivacyPreferences
 
 data class SettingsUiState(
@@ -51,7 +51,7 @@ class SettingsViewModel : BaseViewModel<SettingsUiState>() {
                     updateState {
                         it.copy(
                             isLoadingPrivacy = false,
-                            privacyLoadError = e.message
+                            privacyLoadError = e.bestApiMessage()
                         )
                     }
                 }
@@ -64,9 +64,7 @@ class SettingsViewModel : BaseViewModel<SettingsUiState>() {
             updateState { it.copy(privacySyncError = null) }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    RetrofitProvider.create(AuthApiService::class.java).patchPrivacy(
-                        UpdatePrivacyRequestDto(privateProfile = !show)
-                    )
+                    RetrofitProvider.create(AuthApiService::class.java).patchPrivacy()
                 }
             }.fold(
                 onSuccess = {
@@ -74,7 +72,7 @@ class SettingsViewModel : BaseViewModel<SettingsUiState>() {
                     updateState { it.copy(showProfile = show) }
                 },
                 onFailure = { e ->
-                    updateState { it.copy(privacySyncError = e.message) }
+                    updateState { it.copy(privacySyncError = e.bestApiMessage()) }
                 }
             )
         }

@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
 import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
@@ -38,7 +39,7 @@ class InventorySyncViewModel : BaseViewModel<InventorySyncUiState>() {
                         InventorySyncUiState(
                             isLoading = false,
                             itemCount = null,
-                            errorMessage = e.message ?: "Ошибка"
+                            errorMessage = e.bestApiMessage()
                         )
                     }
                 }

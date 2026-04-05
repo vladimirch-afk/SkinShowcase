@@ -21,18 +21,26 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -64,6 +72,10 @@ import androidx.compose.ui.graphics.drawOutline
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
+import ru.kotlix.skinshowcase.core.network.auth.AvatarPresetDto
+import ru.kotlix.skinshowcase.core.network.auth.AvatarUrls
+import ru.kotlix.skinshowcase.core.network.auth.LegalDocumentSummaryDto
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsd
 import ru.kotlix.skinshowcase.designsystem.theme.GoldAccent
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
@@ -92,6 +104,9 @@ fun ProfileScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showEditDisplayName by remember { mutableStateOf(false) }
+    var showAvatarPicker by remember { mutableStateOf(false) }
+    var avatarPickError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         viewModel.refreshProfile()
     }
@@ -125,9 +140,36 @@ fun ProfileScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp)
         ) {
+        state.refreshError?.let { err ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = err,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    TextButton(onClick = { viewModel.clearRefreshError() }) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            }
+        }
         ProfileHeaderCard(
+            displayName = state.steamNickname,
             steamAvatarUrl = state.steamAvatarUrl,
-            steamId = state.steamId
+            steamId = state.steamId,
+            onEditDisplayName = { showEditDisplayName = true },
+            onChangeAvatar = { showAvatarPicker = true }
         )
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -147,7 +189,10 @@ fun ProfileScreen(
         FavoritesCard(onClick = onNavigateToFavorites)
         Spacer(modifier = Modifier.height(12.dp))
 
-        DocumentsCard(onDocumentClick = onDocumentClick)
+        DocumentsCard(
+            apiDocuments = state.legalDocumentsFromApi,
+            onDocumentClick = onDocumentClick
+        )
         Spacer(modifier = Modifier.height(12.dp))
 
         SettingsCard(
@@ -182,8 +227,199 @@ fun ProfileScreen(
                 color = MaterialTheme.colorScheme.error
             )
         }
+
+        if (showEditDisplayName) {
+            EditDisplayNameDialog(
+                initialName = state.steamNickname,
+                viewModel = viewModel,
+                onDismiss = { showEditDisplayName = false }
+            )
+        }
+        if (showAvatarPicker) {
+            AvatarPickerDialog(
+                presets = state.avatarPresets,
+                selectedPresetId = state.avatarPresetId,
+                avatarSource = state.avatarSource,
+                steamProfileImageUrl = state.steamProfileImageUrl,
+                viewModel = viewModel,
+                errorMessage = avatarPickError,
+                onErrorClear = { avatarPickError = null },
+                onPickError = { avatarPickError = it },
+                onDismiss = {
+                    showAvatarPicker = false
+                    avatarPickError = null
+                }
+            )
+        }
     }
     }
+}
+
+@Composable
+private fun AvatarPickerDialog(
+    presets: List<AvatarPresetDto>,
+    selectedPresetId: String?,
+    avatarSource: String?,
+    steamProfileImageUrl: String?,
+    viewModel: ProfileViewModel,
+    errorMessage: String?,
+    onErrorClear: () -> Unit,
+    onPickError: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val src = avatarSource?.trim()?.uppercase(java.util.Locale.US)
+    val steamSelected = src == "STEAM"
+    val selectedPresetNum = selectedPresetId?.toIntOrNull() ?: AvatarUrls.DEFAULT_PRESET_ID.toInt()
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.profile_avatar_picker_title)) },
+        text = {
+            Column {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(
+                        items = listOf("steam_slot"),
+                        key = { it }
+                    ) {
+                        val borderMod = if (steamSelected) {
+                            Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                        } else {
+                            Modifier
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .then(borderMod)
+                                .clickable {
+                                    onErrorClear()
+                                    viewModel.selectSteamAvatar(
+                                        onSuccess = onDismiss,
+                                        onError = onPickError
+                                    )
+                                },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (!steamProfileImageUrl.isNullOrBlank()) {
+                                NetworkImage(
+                                    url = steamProfileImageUrl,
+                                    contentDescription = stringResource(R.string.profile_avatar_steam),
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(CircleShape)
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.profile_avatar_steam),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    items(presets, key = { it.id ?: "" }) { preset ->
+                        val id = preset.id?.trim().orEmpty()
+                        if (id.isEmpty()) return@items
+                        val itemNum = id.toIntOrNull() ?: return@items
+                        val isSelected = !steamSelected && itemNum == selectedPresetNum
+                        NetworkImage(
+                            url = AvatarUrls.presetImageUrl(id),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .then(
+                                    if (isSelected) {
+                                        Modifier.border(3.dp, MaterialTheme.colorScheme.primary, CircleShape)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .clickable {
+                                    onErrorClear()
+                                    viewModel.selectAvatarPreset(
+                                        id,
+                                        onSuccess = onDismiss,
+                                        onError = onPickError
+                                    )
+                                }
+                        )
+                    }
+                }
+                if (presets.isEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stringResource(R.string.error_data_title),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                errorMessage?.let { err ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = err,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
+}
+
+@Composable
+private fun EditDisplayNameDialog(
+    initialName: String,
+    viewModel: ProfileViewModel,
+    onDismiss: () -> Unit
+) {
+    var draft by remember(initialName) { mutableStateOf(initialName) }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.profile_display_name_dialog_title)) },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = draft,
+                    onValueChange = {
+                        draft = it
+                        error = null
+                    },
+                    label = { Text(stringResource(R.string.profile_display_name_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = error != null,
+                    supportingText = error?.let { { Text(it) } }
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    viewModel.updateDisplayName(
+                        draft,
+                        onSuccess = onDismiss,
+                        onError = { error = it }
+                    )
+                }
+            ) {
+                Text(stringResource(R.string.trade_link_save))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(android.R.string.cancel))
+            }
+        }
+    )
 }
 
 @Composable
@@ -228,8 +464,11 @@ private fun TradeLinkCard(
 
 @Composable
 private fun ProfileHeaderCard(
+    displayName: String,
     steamAvatarUrl: String?,
     steamId: String?,
+    onEditDisplayName: () -> Unit,
+    onChangeAvatar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -256,36 +495,40 @@ private fun ProfileHeaderCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                if (!steamAvatarUrl.isNullOrBlank()) {
-                    NetworkImage(
-                        url = steamAvatarUrl,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(AVATAR_SIZE)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(AVATAR_SIZE)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_avatar_me),
-                            contentDescription = null,
-                            modifier = Modifier.size(AVATAR_SIZE * 0.6f),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Column(verticalArrangement = Arrangement.Center) {
+                val avatarUrl = steamAvatarUrl?.takeIf { it.isNotBlank() }
+                    ?: AvatarUrls.userAvatarUrl(null)
+                NetworkImage(
+                    url = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(AVATAR_SIZE)
+                        .clip(CircleShape)
+                        .clickable(onClick = onChangeAvatar)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = steamId?.takeIf { it.isNotBlank() } ?: "—",
+                        text = displayName.takeIf { it.isNotBlank() }
+                            ?: stringResource(R.string.skin_detail_seller),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = steamId?.takeIf { it.isNotBlank() } ?: "—",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = stringResource(R.string.profile_display_name_edit),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onEditDisplayName)
+                    )
+                    Text(
+                        text = stringResource(R.string.profile_avatar_change),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onChangeAvatar)
                     )
                 }
             }
@@ -406,7 +649,7 @@ private fun OfferRowContent(
             )
             if (offer.priceRub != null) {
                 Text(
-                    text = "${offer.priceRub.toInt()} ₽",
+                    text = formatSkinPriceUsd(offer.priceRub),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -493,6 +736,7 @@ private fun FavoritesCard(
 
 @Composable
 private fun DocumentsCard(
+    apiDocuments: List<LegalDocumentSummaryDto>,
     onDocumentClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -501,22 +745,24 @@ private fun DocumentsCard(
         modifier = modifier
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                text = stringResource(R.string.profile_user_agreement),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onDocumentClick("agreement") }
-            )
-            Text(
-                text = stringResource(R.string.profile_instructions),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onDocumentClick("instructions") }
-            )
+            if (apiDocuments.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.profile_documents_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                apiDocuments.forEach { doc ->
+                    Text(
+                        text = doc.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onDocumentClick(doc.slug) }
+                    )
+                }
+            }
         }
     }
 }

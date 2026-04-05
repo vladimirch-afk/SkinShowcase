@@ -64,6 +64,11 @@ fun ChatScreen(
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var showReportDialog by remember { mutableStateOf(false) }
+    var reportReason by remember { mutableStateOf("") }
+    var reportDetails by remember { mutableStateOf("") }
+    var reportSending by remember { mutableStateOf(false) }
+    var reportDialogError by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -76,6 +81,20 @@ fun ChatScreen(
                             painter = painterResource(R.drawable.ic_back),
                             contentDescription = stringResource(R.string.message_back)
                         )
+                    }
+                },
+                actions = {
+                    if (state.canReportCounterparty) {
+                        TextButton(
+                            onClick = {
+                                reportReason = ""
+                                reportDetails = ""
+                                reportDialogError = null
+                                showReportDialog = true
+                            }
+                        ) {
+                            Text(stringResource(R.string.message_report))
+                        }
                     }
                 }
             )
@@ -120,7 +139,11 @@ fun ChatScreen(
                 ) { message ->
                     MessageBubble(
                         message = message,
-                        onLongClick = { messageIdToDelete = message.id }
+                        onLongClick = if (message.isOutgoing) {
+                            { messageIdToDelete = message.id }
+                        } else {
+                            null
+                        }
                     )
                 }
             }
@@ -155,11 +178,88 @@ fun ChatScreen(
         }
     }
 
+    if (showReportDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                if (!reportSending) showReportDialog = false
+            },
+            title = { Text(stringResource(R.string.message_report_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = reportReason,
+                        onValueChange = {
+                            reportReason = it
+                            reportDialogError = null
+                        },
+                        label = { Text(stringResource(R.string.message_report_reason)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !reportSending
+                    )
+                    OutlinedTextField(
+                        value = reportDetails,
+                        onValueChange = {
+                            reportDetails = it
+                            reportDialogError = null
+                        },
+                        label = { Text(stringResource(R.string.message_report_details)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !reportSending,
+                        minLines = 2,
+                        maxLines = 4
+                    )
+                    reportDialogError?.let { err ->
+                        Text(
+                            text = err,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        reportSending = true
+                        reportDialogError = null
+                        viewModel.reportCounterparty(
+                            reason = reportReason,
+                            details = reportDetails
+                        ) { err ->
+                            reportSending = false
+                            if (err == null) {
+                                showReportDialog = false
+                            } else {
+                                reportDialogError = err
+                            }
+                        }
+                    },
+                    enabled = !reportSending && reportReason.isNotBlank()
+                ) {
+                    if (reportSending) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    } else {
+                        Text(stringResource(R.string.message_report_send))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showReportDialog = false },
+                    enabled = !reportSending
+                ) {
+                    Text(stringResource(android.R.string.cancel))
+                }
+            }
+        )
+    }
+
     if (state.errorMessage != null) {
         val context = LocalContext.current
         DataErrorDialog(
             title = stringResource(R.string.error_data_title),
-            message = stringResource(R.string.error_data_message),
+            message = state.errorMessage ?: stringResource(R.string.error_data_message),
             okText = stringResource(R.string.error_dialog_ok),
             settingsText = stringResource(R.string.error_dialog_settings),
             onDismiss = viewModel::clearError,
@@ -222,7 +322,7 @@ private fun ChatInputRow(
 @Composable
 private fun MessageBubble(
     message: MessageItem,
-    onLongClick: () -> Unit = {},
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val contentAlignment = if (message.isOutgoing) Alignment.CenterEnd else Alignment.CenterStart
@@ -232,13 +332,19 @@ private fun MessageBubble(
         MaterialTheme.colorScheme.surfaceVariant
     }
 
-    Row(
-        modifier = modifier
+    val rowModifier = if (onLongClick != null) {
+        modifier
             .fillMaxWidth()
             .combinedClickable(
                 onClick = { },
                 onLongClick = onLongClick
-            ),
+            )
+    } else {
+        modifier.fillMaxWidth()
+    }
+
+    Row(
+        modifier = rowModifier,
         horizontalArrangement = if (message.isOutgoing) Arrangement.End else Arrangement.Start
     ) {
         Box(

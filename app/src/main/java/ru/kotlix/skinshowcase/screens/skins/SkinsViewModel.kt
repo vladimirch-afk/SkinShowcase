@@ -6,6 +6,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
+import ru.kotlix.skinshowcase.core.network.bestApiMessage
 
 class SkinsViewModel : BaseViewModel<SkinsUiState>() {
 
@@ -42,7 +43,7 @@ class SkinsViewModel : BaseViewModel<SkinsUiState>() {
                         skins = it.skins,
                         isLoading = false,
                         isRefreshing = false,
-                        errorMessage = e.message ?: "Ошибка загрузки"
+                        errorMessage = e.bestApiMessage()
                     )
                 }
                 if (e is CancellationException) throw e

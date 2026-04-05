@@ -40,6 +40,9 @@
     <string name="create_offer_inventory_empty">В инвентаре нет предметов. Нажмите «Загрузить инвентарь» в профиле или проверьте настройки инвентаря в Steam.</string>
     <string name="create_offer_no_filter_matches">Нет предметов по поиску и фильтру. Измените условия.</string>
     <string name="create_offer_group_by_name">Группировать по названию</string>
+    <string name="create_offer_max_five_items">В одном оффере не больше 5 предметов.</string>
+    <string name="create_offer_toggle_failed">Не удалось обновить набор для обмена.</string>
+    <string name="create_offer_selection_toggle_cd">Добавить или убрать из оффера</string>
     <string name="profile_trade_link">Ссылка для обмена</string>
     <string name="profile_trade_link_not_set">Установите ссылку для обмена</string>
     <string name="trade_link_screen_title">Ссылка для обмена</string>
@@ -60,6 +63,7 @@
 <string name="profile_favorites">Избранные</string>
 <string name="profile_view_favorites">Смотреть избранное</string>
 <string name="profile_documents">Документы</string>
+    <string name="profile_documents_empty">Список документов пуст</string>
 <string name="profile_user_agreement">Пользовательское соглашение</string>
 <string name="profile_instructions">Инструкция по использованию</string>
 <string name="profile_contact_support">Связаться с поддержкой</string>
@@ -91,13 +95,27 @@
     <string name="skin_detail_no_trade_link_message">У пользователя не установлена ссылка на обмен. Можно перейти только на его страницу в Steam.</string>
     <string name="skin_detail_go_to_profile">Перейти на страницу</string>
     <string name="skin_detail_open_chat">Написать продавцу</string>
+    <string name="skin_detail_report">Пожаловаться</string>
+    <string name="skin_detail_report_title">Жалоба на пользователя</string>
+    <string name="skin_detail_report_reason">Причина</string>
+    <string name="skin_detail_report_details">Комментарий (необязательно)</string>
+    <string name="skin_detail_report_send">Отправить</string>
+    <string name="skin_detail_report_done">Жалоба отправлена</string>
+
+    <string name="profile_display_name_edit">Изменить имя</string>
+    <string name="profile_display_name_dialog_title">Имя в приложении</string>
+    <string name="profile_display_name_hint">Отображаемое имя</string>
+    <string name="profile_avatar_change">Сменить аватарку</string>
+    <string name="profile_avatar_picker_title">Выберите аватарку</string>
+    <string name="profile_avatar_steam">Steam</string>
+    <string name="document_remote_error">Не удалось загрузить документ</string>
 
 <string name="filter_title">Фильтр</string>
 <string name="filter_apply">Применить</string>
 <string name="filter_reset">Сбросить</string>
-<string name="filter_price_range">Диапазон цены</string>
-<string name="filter_price_min">Мин. цена</string>
-<string name="filter_price_max">Макс. цена</string>
+<string name="filter_price_range">Диапазон цены (USD)</string>
+<string name="filter_price_min">Мин. цена, USD</string>
+<string name="filter_price_max">Макс. цена, USD</string>
 <string name="filter_float_range">Диапазон float</string>
 <string name="filter_float_min">Мин. float</string>
 <string name="filter_float_max">Макс. float</string>
@@ -136,6 +154,8 @@
 <string name="home_feed_more_items">Ещё предметов: %d</string>
 <string name="home_feed_collapse_carousel">Свернуть</string>
 <string name="home_feed_steam_id">Steam ID: %s</string>
+<string name="home_feed_owner_star_commit">Добавить отмеченные предметы в избранное</string>
+<string name="home_feed_skin_like_toggle">Отметить предмет для добавления в избранное по звёздочке в шапке</string>
 <string name="sort_default">По умолчанию</string>
 <string name="sort_price_asc">Цена: по возрастанию</string>
 <string name="sort_price_desc">Цена: по убыванию</string>

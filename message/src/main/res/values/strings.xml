@@ -5,8 +5,8 @@
     <string name="message_empty_chats">Нет чатов</string>
     <string name="message_chat_title">Чат</string>
     <string name="message_new_chat">Новый чат</string>
-    <string name="message_steam_id_hint">Steam ID (17 цифр)</string>
-    <string name="message_steam_id_invalid">Введите Steam ID</string>
+    <string name="message_steam_id_hint">Steam ID (17 цифр) или ник</string>
+    <string name="message_steam_id_invalid">Введите Steam ID или ник</string>
     <string name="message_open_chat">Открыть чат</string>
     <string name="message_refresh">Обновить</string>
     <string name="message_send">Отправить</string>
@@ -23,4 +23,9 @@
     <string name="message_delete_chat">Удалить чат</string>
     <string name="message_delete_chat_confirm">Удалить этот чат? История сообщений будет удалена.</string>
     <string name="message_delete">Удалить</string>
+    <string name="message_report">Пожаловаться</string>
+    <string name="message_report_title">Жалоба на пользователя</string>
+    <string name="message_report_reason">Причина</string>
+    <string name="message_report_details">Подробности (необязательно)</string>
+    <string name="message_report_send">Отправить</string>
 </resources>

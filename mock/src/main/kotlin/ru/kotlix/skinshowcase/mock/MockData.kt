@@ -3,6 +3,7 @@ package ru.kotlix.skinshowcase.mock
 import ru.kotlix.skinshowcase.core.network.SkinDto
 import ru.kotlix.skinshowcase.core.network.messaging.ChatDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessageDto
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 
 /**
  * Централизованные мок-данные для всех обращений к серверу.
@@ -82,11 +83,21 @@ object MockData {
         keychainNames = keychainNames
     )
 
-    /** ID чата с поддержкой (должен совпадать с [ru.kotlix.skinshowcase.message.chats.ChatsListViewModel.SUPPORT_CHAT_ID]). */
+    /** Ключ хранилища мока для чата поддержки (в UI навигация с плейсхолдером `support`). */
     const val SUPPORT_CHAT_ID = "support"
+
+    private fun mockStorageChatId(apiChatId: String): String =
+        if (MessagingChatPaths.isSupportMessagingSteamId(apiChatId)) SUPPORT_CHAT_ID else apiChatId
 
     private val mutableChats: MutableList<ChatDto> = mutableListOf(
         ChatDto(SUPPORT_CHAT_ID, "Поддержка", "Здравствуйте! Опишите вашу проблему или вопрос — мы постараемся помочь.", "2025-03-14T10:00:00Z", null),
+        ChatDto(
+            MessagingChatPaths.SUPPORT_MESSAGING_STEAM_ID,
+            "Поддержка",
+            "Дубликат с сервера (17×0) — в приложении скрыт",
+            "2025-03-14T09:00:00Z",
+            null
+        ),
         ChatDto("76561198012345601", "Trader_AWP", "Привет! Рад знакомству.", "2025-03-14T12:30:00Z", null),
         ChatDto("76561198123456702", "SteamUser_Pro", "Добрый день!", "2025-03-13T18:00:00Z", null),
         ChatDto("76561198234567803", "HappyTrader", "Здравствуйте!", "2025-03-12T09:15:00Z", null)
@@ -118,12 +129,15 @@ object MockData {
         )
     )
 
-    fun getMessages(chatId: String): List<MessageDto> =
-        messagesByChat[chatId]?.toList() ?: emptyList()
+    fun getMessages(chatId: String): List<MessageDto> {
+        val key = mockStorageChatId(chatId)
+        return messagesByChat[key]?.toList() ?: emptyList()
+    }
 
     fun addMessage(chatId: String, message: MessageDto) {
-        messagesByChat.getOrPut(chatId) { mutableListOf() }.add(message)
-        upsertChatInList(chatId, message.text)
+        val key = mockStorageChatId(chatId)
+        messagesByChat.getOrPut(key) { mutableListOf() }.add(message)
+        upsertChatInList(key, message.text)
     }
 
     private fun upsertChatInList(chatId: String, lastMessageText: String) {
@@ -190,14 +204,19 @@ object MockData {
 
     /** Удаляет сообщение в чате по id. Возвращает true, если сообщение было удалено. */
     fun removeMessage(chatId: String, messageId: String): Boolean {
-        val list = messagesByChat[chatId] ?: return false
+        val key = mockStorageChatId(chatId)
+        val list = messagesByChat[key] ?: return false
         return list.removeAll { it.id == messageId }
     }
 
     /** Удаляет чат и все его сообщения. Возвращает true, если чат был удалён. */
     fun removeChat(chatId: String): Boolean {
-        val removed = mutableChats.removeAll { it.counterpartySteamId == chatId }
-        messagesByChat.remove(chatId)
+        val key = mockStorageChatId(chatId)
+        val removed = mutableChats.removeAll {
+            it.counterpartySteamId == key ||
+                MessagingChatPaths.isSupportMessagingSteamId(it.counterpartySteamId)
+        }
+        messagesByChat.remove(key)
         return removed
     }
 

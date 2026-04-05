@@ -3,6 +3,8 @@ package ru.kotlix.skinshowcase.screens.createoffer
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,12 +14,19 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -49,11 +58,12 @@ import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinFilterApplicator
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
 import ru.kotlix.skinshowcase.screens.home.AppliedFiltersRow
+import ru.kotlix.skinshowcase.screens.home.HomeCreateOfferButton
 import ru.kotlix.skinshowcase.screens.home.HomeFilterSheet
 import ru.kotlix.skinshowcase.screens.home.HomeTopBar
-import ru.kotlix.skinshowcase.screens.home.SortByRow
 import ru.kotlix.skinshowcase.screens.home.filterSkinsByQuery
-import ru.kotlix.skinshowcase.screens.home.sortSkins
+import ru.kotlix.skinshowcase.data.ProfileDataProvider
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsd
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.components.NetworkImage
 
@@ -66,13 +76,21 @@ private val GRID_SPACING = 12.dp
 fun CreateOfferSelectSkinScreen(
     onBack: () -> Unit,
     onSkinClick: (skinId: String, inventoryAssetId: String?) -> Unit,
+    onConfirmCreateOffer: () -> Unit = {},
     viewModel: CreateOfferSelectSkinViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         viewModel.loadSkins()
+    }
+
+    LaunchedEffect(state.selectionHint) {
+        val msg = state.selectionHint ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message = msg)
+        viewModel.clearSelectionHint()
     }
 
     if (state.filterSheetVisible) {
@@ -83,10 +101,13 @@ fun CreateOfferSelectSkinScreen(
         )
     }
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+    ) {
+    Column(
+        modifier = Modifier.fillMaxSize()
     ) {
         TopAppBar(
             title = {
@@ -127,7 +148,7 @@ fun CreateOfferSelectSkinScreen(
             val context = LocalContext.current
             DataErrorDialog(
                 title = stringResource(R.string.error_data_title),
-                message = stringResource(R.string.error_data_message),
+                message = state.errorMessage ?: stringResource(R.string.error_data_message),
                 okText = stringResource(R.string.error_dialog_ok),
                 settingsText = stringResource(R.string.error_dialog_settings),
                 onDismiss = viewModel::clearError,
@@ -161,15 +182,21 @@ fun CreateOfferSelectSkinScreen(
             val filteredSkins = remember(
                 state.skins,
                 state.filter,
-                state.searchQuery,
-                state.sortOption
+                state.searchQuery
             ) {
                 val byFilter = SkinFilterApplicator.apply(state.skins, state.filter)
-                sortSkins(
-                    filterSkinsByQuery(byFilter, state.searchQuery),
-                    state.sortOption
+                filterSkinsByQuery(byFilter, state.searchQuery)
+            }
+            val selectionChangedSinceLoad = remember(
+                state.baselineTradeSelectionItems,
+                state.tradeSelectionItems
+            ) {
+                !ProfileDataProvider.tradeSelectionSetsEqual(
+                    state.baselineTradeSelectionItems,
+                    state.tradeSelectionItems
                 )
             }
+            val showCreateOfferBar = selectionChangedSinceLoad
             Column(modifier = Modifier.fillMaxSize()) {
                 HomeTopBar(
                     searchQuery = state.searchQuery,
@@ -179,10 +206,6 @@ fun CreateOfferSelectSkinScreen(
                 AppliedFiltersRow(
                     filter = state.filter,
                     onFilterClick = viewModel::openFilterSheet
-                )
-                SortByRow(
-                    sortOption = state.sortOption,
-                    onSortSelect = viewModel::setSortOption
                 )
                 if (filteredSkins.isEmpty()) {
                     Box(
@@ -238,16 +261,47 @@ fun CreateOfferSelectSkinScreen(
                                 row.stableGridKey(index)
                             }
                         ) { _, row ->
+                            val inOffer = state.tradeSelectionItems.any {
+                                ProfileDataProvider.skinMatchesTradeSelectionItem(row.skin, it)
+                            }
                             MySkinGridCard(
                                 skin = row.skin,
                                 stackLabel = row.stackLabel,
-                                onClick = { onSkinClick(row.skin.id, row.skin.inventoryAssetId) }
+                                isInOffer = inOffer,
+                                isToggling = state.togglingSkinKey == skinToggleKey(row.skin),
+                                onOpenDetail = { onSkinClick(row.skin.id, row.skin.inventoryAssetId) },
+                                onToggleSelection = { viewModel.toggleOfferSelection(row.skin) }
                             )
                         }
                     }
                 }
+                if (showCreateOfferBar) {
+                    HomeCreateOfferButton(
+                        onClick = onConfirmCreateOffer,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    )
+                }
             }
         }
+    }
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(
+                    bottom = if (state.skins.isNotEmpty() && state.errorMessage == null) {
+                        val changed = !ProfileDataProvider.tradeSelectionSetsEqual(
+                            state.baselineTradeSelectionItems,
+                            state.tradeSelectionItems
+                        )
+                        if (changed) 88.dp else 0.dp
+                    } else {
+                        0.dp
+                    }
+                )
+        )
     }
 }
 
@@ -279,76 +333,126 @@ private fun InventoryGridRow.stableGridKey(fallbackIndex: Int): String {
 @Composable
 private fun MySkinGridCard(
     skin: Skin,
-    onClick: () -> Unit,
+    isInOffer: Boolean,
+    isToggling: Boolean,
+    onOpenDetail: () -> Unit,
+    onToggleSelection: () -> Unit,
     stackLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        onClick = onClick,
+    ElevatedCard(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(0.75f),
         shape = CARD_SHAPE,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.elevatedCardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 2.dp)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            NetworkImage(
-                url = skin.imageUrl,
-                contentDescription = skin.name,
-                modifier = Modifier.fillMaxSize()
-            )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                Color.Black.copy(alpha = 0.75f)
+                    .clickable(onClick = onOpenDetail)
+            ) {
+                NetworkImage(
+                    url = skin.imageUrl,
+                    contentDescription = skin.name,
+                    modifier = Modifier.fillMaxSize()
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    Color.Black.copy(alpha = 0.75f)
+                                )
                             )
                         )
-                    )
-                    .align(Alignment.BottomCenter)
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = skin.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
+                        .align(Alignment.BottomCenter)
                 )
-                Text(
-                    text = formatPriceRub(skin.price),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = PriceGreen
-                )
-            }
-            stackLabel?.let { label ->
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                Column(
                     modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(10.dp)
-                )
+                        .align(Alignment.BottomStart)
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = skin.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = formatSkinPriceUsd(skin.price),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = PriceGreen
+                    )
+                }
+                stackLabel?.let { label ->
+                    Text(
+                        text = label,
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(10.dp)
+                    )
+                }
             }
+            OfferSelectionBadge(
+                selected = isInOffer,
+                loading = isToggling,
+                onToggle = onToggleSelection,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(8.dp)
+            )
         }
     }
 }
 
-private fun formatPriceRub(price: Double?): String {
-    if (price == null) return "—"
-    val formatter = java.text.DecimalFormat("#,##0")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale("ru"))
-    return "${formatter.format(price)} ₽"
+@Composable
+private fun OfferSelectionBadge(
+    selected: Boolean,
+    loading: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val outline = MaterialTheme.colorScheme.outline
+    val fill = PriceGreen
+    Box(
+        modifier = modifier
+            .size(30.dp)
+            .clip(CircleShape)
+            .border(
+                width = 2.dp,
+                color = if (selected) fill else outline,
+                shape = CircleShape
+            )
+            .background(
+                color = if (selected) fill else Color.Transparent,
+                shape = CircleShape
+            )
+            .clickable(onClick = onToggle, enabled = !loading),
+        contentAlignment = Alignment.Center
+    ) {
+        when {
+            loading -> CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = if (selected) Color.White else MaterialTheme.colorScheme.primary
+            )
+            selected -> Icon(
+                imageVector = Icons.Filled.Check,
+                contentDescription = stringResource(R.string.create_offer_selection_toggle_cd),
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
 }

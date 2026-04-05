@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,16 +51,19 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsd
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.screens.profile.OfferSummary
 import ru.kotlix.skinshowcase.components.NetworkImage
+import ru.kotlix.skinshowcase.core.network.auth.AvatarUrls
 
 private val CARD_SHAPE = RoundedCornerShape(12.dp)
 private val CARD_BORDER_DP = 1.dp
 private val IMAGE_PLACEHOLDER_SIZE = 72.dp
+private val HEADER_AVATAR_SIZE = 40.dp
 
 @Composable
 fun OffersScreen(
@@ -73,6 +77,7 @@ fun OffersScreen(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refreshUserAvatarFromCurrentUser()
                 viewModel.refreshOffers()
             }
         }
@@ -132,17 +137,52 @@ fun OffersScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 text = stringResource(R.string.screen_offers),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f)
             )
+            NetworkImage(
+                url = state.userAvatarUrl.ifBlank { AvatarUrls.currentUserAvatarDisplayUrl() },
+                contentDescription = null,
+                modifier = Modifier
+                    .size(HEADER_AVATAR_SIZE)
+                    .clip(CircleShape)
+            )
+        }
+        state.loadError?.let { err ->
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Row(
+                    modifier = Modifier.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = err,
+                        modifier = Modifier.weight(1f),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    TextButton(onClick = { viewModel.clearLoadError() }) {
+                        Text(stringResource(android.R.string.ok))
+                    }
+                }
+            }
         }
         @OptIn(ExperimentalMaterial3Api::class)
         PullToRefreshBox(
@@ -233,7 +273,7 @@ private fun OfferCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = formatPriceRub(offer.priceRub),
+                    text = formatSkinPriceUsd(offer.priceRub),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = PriceGreen
@@ -251,13 +291,6 @@ private fun OfferCard(
             }
         }
     }
-}
-
-private fun formatPriceRub(price: Double?): String {
-    if (price == null) return "—"
-    val formatter = java.text.DecimalFormat("#,##0")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale("ru"))
-    return "${formatter.format(price)} ₽"
 }
 
 @Preview(showBackground = true)

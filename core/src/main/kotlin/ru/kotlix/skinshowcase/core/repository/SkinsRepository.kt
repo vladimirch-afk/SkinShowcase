@@ -10,6 +10,7 @@ import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain
 import ru.kotlix.skinshowcase.core.domain.mapper.toFavoriteEntity
 import ru.kotlix.skinshowcase.core.network.ApiService
+import ru.kotlix.skinshowcase.core.network.isApiForbidden
 import ru.kotlix.skinshowcase.core.network.toSkinDto
 import ru.kotlix.skinshowcase.core.network.inventory.InventoryApiService
 import ru.kotlix.skinshowcase.core.network.inventory.toSkin
@@ -36,6 +37,10 @@ class SkinsRepository(
     suspend fun getSkinsFromApi(): List<Skin> {
         val favoriteIds = favoriteDao.getAllIds().toSet()
         val remote = runCatching { api.getSkins() }
+        if (remote.isFailure) {
+            val e = remote.exceptionOrNull()
+            if (e != null && e.isApiForbidden()) throw e
+        }
         return when {
             remote.isSuccess -> {
                 val list = remote.getOrThrow()
@@ -69,6 +74,10 @@ class SkinsRepository(
             return fromInventory
         }
         val fromApi = runCatching { api.getSkinById(id).toSkinDto() }
+        if (fromApi.isFailure) {
+            val e = fromApi.exceptionOrNull()
+            if (e != null && e.isApiForbidden()) throw e
+        }
         return when {
             fromApi.isSuccess -> {
                 val dto = fromApi.getOrThrow()
@@ -92,13 +101,18 @@ class SkinsRepository(
         val owner = ownerSteamId?.trim()?.takeIf { STEAM_ID_64.matches(it) } ?: return null
         val cid = classId.trim().takeIf { it.isNotEmpty() } ?: return null
         val aid = assetId?.trim()?.takeIf { it.isNotEmpty() } ?: return null
-        val dto = runCatching {
+        val inv = runCatching {
             inventoryApi.getInventoryItemDetail(
                 steamId = owner,
                 assetId = aid,
                 classId = cid
             )
-        }.getOrNull() ?: return null
+        }
+        if (inv.isFailure) {
+            val e = inv.exceptionOrNull()
+            if (e != null && e.isApiForbidden()) throw e
+        }
+        val dto = inv.getOrNull() ?: return null
         return dto.toSkin(isFavorite = isFavorite, offerOwnerSteamId = offerOwnerSteamId)
     }
 
@@ -121,4 +135,7 @@ class SkinsRepository(
 
     suspend fun isFavorite(skinId: String): Boolean =
         favoriteDao.getById(skinId) != null
+
+    suspend fun getFavoriteSkinIds(): Set<String> =
+        favoriteDao.getAllIds().toSet()
 }

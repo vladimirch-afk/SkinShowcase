@@ -8,6 +8,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
+/** Трейды / набор для обмена: **api-gateway**, префикс `/api/v1/trades/` → trades. */
 interface TradesApiService {
 
     @GET("api/v1/trades/feed")

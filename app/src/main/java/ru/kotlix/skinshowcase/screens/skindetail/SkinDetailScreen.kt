@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -63,6 +64,7 @@ import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.designsystem.components.DataErrorDialog
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsdAmount
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientEnd
 import ru.kotlix.skinshowcase.designsystem.theme.PurpleBlueGradientStart
@@ -90,6 +92,11 @@ fun SkinDetailScreen(
     val context = LocalContext.current
     var showGoToSteamProfileDialog by remember { mutableStateOf(false) }
     var showNoTradeLinkWarning by remember { mutableStateOf(false) }
+    var showReportDialog by remember { mutableStateOf(false) }
+    var reportReason by remember { mutableStateOf("") }
+    var reportDetails by remember { mutableStateOf("") }
+    var reportSending by remember { mutableStateOf(false) }
+    var reportDialogError by remember { mutableStateOf<String?>(null) }
 
     androidx.compose.runtime.LaunchedEffect(state.navigateToMyOffers) {
         if (state.navigateToMyOffers) {
@@ -152,7 +159,7 @@ fun SkinDetailScreen(
                 val context = LocalContext.current
                 DataErrorDialog(
                     title = stringResource(R.string.error_data_title),
-                    message = stringResource(R.string.error_data_message),
+                    message = state.errorMessage ?: stringResource(R.string.error_data_message),
                     okText = stringResource(R.string.error_dialog_ok),
                     settingsText = stringResource(R.string.error_dialog_settings),
                     onDismiss = viewModel::clearError,
@@ -230,11 +237,17 @@ fun SkinDetailScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.skin_detail_seller),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = state.sellerNickname?.trim()?.takeIf { it.isNotEmpty() } ?: "—",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    Spacer(modifier = Modifier.height(6.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = state.sellerSteamId ?: "—",
                         style = MaterialTheme.typography.bodyMedium,
@@ -250,6 +263,19 @@ fun SkinDetailScreen(
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text(stringResource(R.string.skin_detail_open_chat))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        reportReason = ""
+                        reportDetails = ""
+                        reportDialogError = null
+                        showReportDialog = true
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(stringResource(R.string.skin_detail_report))
                 }
             }
             Spacer(modifier = Modifier.height(24.dp))
@@ -312,6 +338,84 @@ fun SkinDetailScreen(
                 }
             }
             }
+        }
+        if (showReportDialog && state.sellerSteamId != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    if (!reportSending) showReportDialog = false
+                },
+                title = { Text(stringResource(R.string.skin_detail_report_title)) },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = reportReason,
+                            onValueChange = {
+                                reportReason = it
+                                reportDialogError = null
+                            },
+                            label = { Text(stringResource(R.string.skin_detail_report_reason)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !reportSending
+                        )
+                        OutlinedTextField(
+                            value = reportDetails,
+                            onValueChange = {
+                                reportDetails = it
+                                reportDialogError = null
+                            },
+                            label = { Text(stringResource(R.string.skin_detail_report_details)) },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !reportSending,
+                            minLines = 2,
+                            maxLines = 4
+                        )
+                        reportDialogError?.let { err ->
+                            Text(
+                                text = err,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            reportSending = true
+                            reportDialogError = null
+                            viewModel.reportSeller(
+                                reason = reportReason,
+                                details = reportDetails
+                            ) { err ->
+                                reportSending = false
+                                if (err == null) {
+                                    showReportDialog = false
+                                } else {
+                                    reportDialogError = err
+                                }
+                            }
+                        },
+                        enabled = !reportSending && reportReason.isNotBlank()
+                    ) {
+                        if (reportSending) {
+                            androidx.compose.material3.CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp)
+                            )
+                        } else {
+                            Text(stringResource(R.string.skin_detail_report_send))
+                        }
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showReportDialog = false },
+                        enabled = !reportSending
+                    ) {
+                        Text(stringResource(android.R.string.cancel))
+                    }
+                }
+            )
         }
         if (showGoToSteamProfileDialog && state.sellerSteamId != null) {
             AlertDialog(
@@ -426,7 +530,7 @@ private fun SkinDetailsContainerBlock(skin: Skin, noValue: String) {
         }
         DetailRow(
             label = stringResource(R.string.skin_detail_price),
-            value = skin.price?.let { formatPriceUsd(it) } ?: noValue
+            value = skin.price?.let { formatSkinPriceUsdAmount(it) } ?: noValue
         )
         skin.amount?.takeIf { it > 1 }?.let { amt ->
             DetailRow(label = stringResource(R.string.skin_detail_amount), value = amt.toString())
@@ -458,7 +562,7 @@ private fun SkinDetailsWeaponColumns(skin: Skin?, noValue: String) {
             )
             DetailRow(
                 label = stringResource(R.string.skin_detail_price),
-                value = skin?.price?.let { formatPriceUsd(it) } ?: noValue
+                value = skin?.price?.let { formatSkinPriceUsdAmount(it) } ?: noValue
             )
             DetailRow(
                 label = stringResource(R.string.skin_detail_keychains),
@@ -547,12 +651,6 @@ private fun formatKeychains(skin: Skin?): String? {
     if (skin == null) return null
     if (skin.keychainNames.isNotEmpty()) return skin.keychainNames.joinToString(", ")
     return if (skin.hasKeychain) "Да" else null
-}
-
-private fun formatPriceUsd(usd: Double): String {
-    val formatter = java.text.DecimalFormat("#,##0.00")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale.US)
-    return "${formatter.format(usd)} USD"
 }
 
 private fun formatFloatForDisplay(value: Double): String {

@@ -41,6 +41,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ru.kotlix.skinshowcase.R
 import ru.kotlix.skinshowcase.components.NetworkImage
 import ru.kotlix.skinshowcase.core.domain.Skin
+import ru.kotlix.skinshowcase.designsystem.format.formatSkinPriceUsd
 import ru.kotlix.skinshowcase.designsystem.theme.PriceGreen
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 
@@ -164,7 +165,7 @@ private fun FavoriteSkinCard(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = formatPriceRub(skin.price),
+                    text = formatSkinPriceUsd(skin.price),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = PriceGreen
@@ -182,13 +183,6 @@ private fun FavoriteSkinCard(
             }
         }
     }
-}
-
-private fun formatPriceRub(price: Double?): String {
-    if (price == null) return "—"
-    val formatter = java.text.DecimalFormat("#,##0.00")
-    formatter.decimalFormatSymbols = java.text.DecimalFormatSymbols(java.util.Locale("ru"))
-    return "${formatter.format(price)} руб."
 }
 
 @Preview(showBackground = true)
