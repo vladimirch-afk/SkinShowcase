@@ -27,7 +27,7 @@ fun InventoryItemDto.toInventorySkin(index: Int): Skin {
         id = resolvedId,
         name = title,
         imageUrl = steamEconomyImageUrl(iconUrl),
-        price = null,
+        price = catalogMinPriceUsd,
         floatValue = floatValue,
         inventoryAssetId = asset.ifEmpty { null }
     )

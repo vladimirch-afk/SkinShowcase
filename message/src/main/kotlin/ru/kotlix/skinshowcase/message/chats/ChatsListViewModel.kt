@@ -9,7 +9,7 @@ import ru.kotlix.skinshowcase.core.Result
 import ru.kotlix.skinshowcase.core.BaseViewModel
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.bestApiMessage
-import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingApiService
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
 import ru.kotlix.skinshowcase.message.domain.ChatItem
@@ -107,7 +107,8 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
     }
 
     /**
-     * Новый чат: 17-значный Steam ID или имя → GET /auth/users/by-username/{username}.
+     * Новый чат: любой непустой ввод → GET /api/chats/by-username/{username}
+     * (на сервере имя или Steam ID, резолв через auth).
      */
     fun resolveChatRecipient(
         raw: String,
@@ -120,18 +121,18 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                 onError("Введите Steam ID или имя")
                 return@launch
             }
-            if (MessagingChatPaths.isValidSteamId17(t)) {
-                onResolved(t)
-                return@launch
-            }
             runCatching {
                 withContext(Dispatchers.IO) {
-                    RetrofitProvider.create(AuthApiService::class.java).getSteamIdByUsername(t).steamId.trim()
+                    RetrofitProvider.create(MessagingApiService::class.java).getChatByUsername(t)
                 }
             }.fold(
-                onSuccess = { id ->
-                    if (MessagingChatPaths.isValidSteamId17(id)) onResolved(id)
-                    else onError("Пользователь не найден")
+                onSuccess = { dto ->
+                    val id = dto.counterpartySteamId.trim()
+                    if (MessagingChatPaths.isValidSteamId17(id)) {
+                        onResolved(id)
+                    } else {
+                        onError("Не удалось определить собеседника")
+                    }
                 },
                 onFailure = { e -> onError(e.bestApiMessage()) }
             )

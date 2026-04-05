@@ -164,8 +164,7 @@ object ProfileDataProvider {
             tradeLink = tradeLink,
             activeOffers = activeOffers,
             dealHistory = emptyList(),
-            showProfile = PrivacyPreferences.getShowProfile(),
-            showOffers = PrivacyPreferences.getShowOffers()
+            showProfile = PrivacyPreferences.getShowProfile()
         )
     }
 

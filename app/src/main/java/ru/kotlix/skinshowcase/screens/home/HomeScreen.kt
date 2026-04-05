@@ -43,8 +43,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -241,12 +239,7 @@ fun HomeScreen(
                             },
                             onSkinClick = { skin ->
                                 onSkinClick(skin.id, skin.offerOwnerSteamId, skin.inventoryAssetId)
-                            },
-                            ownerStarActive = row.ownerHasAnyFavorite(),
-                            onOwnerStarClick = { viewModel.commitTradeFeedLikesForOwner(row.ownerSteamId) },
-                            localLikes = state.tradeFeedLocalLikes,
-                            onToggleLocalLike = { viewModel.toggleTradeFeedLocalLike(it) },
-                            onToggleFavorite = { viewModel.toggleFavorite(it) }
+                            }
                         )
                     }
                 } else {
@@ -262,9 +255,7 @@ fun HomeScreen(
                     ) { skin ->
                         SkinListingCard(
                             skin = skin,
-                            onClick = { onSkinClick(skin.id, skin.offerOwnerSteamId, skin.inventoryAssetId) },
-                            onFavoriteClick = { viewModel.toggleFavorite(skin) },
-                            showFavorite = skin.offerOwnerSteamId == null
+                            onClick = { onSkinClick(skin.id, skin.offerOwnerSteamId, skin.inventoryAssetId) }
                         )
                     }
                 }
@@ -516,11 +507,6 @@ private fun TradeFeedOwnerRow(
     expanded: Boolean,
     onToggleExpand: () -> Unit,
     onSkinClick: (Skin) -> Unit,
-    ownerStarActive: Boolean,
-    onOwnerStarClick: () -> Unit,
-    localLikes: Set<String>,
-    onToggleLocalLike: (Skin) -> Unit,
-    onToggleFavorite: (Skin) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val hasCarousel = row.carouselSkins.isNotEmpty()
@@ -541,29 +527,13 @@ private fun TradeFeedOwnerRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = stringResource(R.string.home_feed_steam_id, row.ownerSteamId),
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                IconButton(
-                    onClick = onOwnerStarClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (ownerStarActive) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = stringResource(R.string.home_feed_owner_star_commit),
-                        tint = if (ownerStarActive) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
             }
             Row(
                 modifier = Modifier
@@ -574,11 +544,7 @@ private fun TradeFeedOwnerRow(
                 row.primarySkins.forEach { skin ->
                     TradeFeedSkinCell(
                         skin = skin,
-                        likedLocal = tradeFeedLikeKey(skin) in localLikes,
-                        onClick = { onSkinClick(skin) },
-                        onStarClick = {
-                            if (skin.isFavorite) onToggleFavorite(skin) else onToggleLocalLike(skin)
-                        }
+                        onClick = { onSkinClick(skin) }
                     )
                 }
             }
@@ -620,11 +586,7 @@ private fun TradeFeedOwnerRow(
                         ) { skin ->
                             TradeFeedSkinCell(
                                 skin = skin,
-                                likedLocal = tradeFeedLikeKey(skin) in localLikes,
-                                onClick = { onSkinClick(skin) },
-                                onStarClick = {
-                                    if (skin.isFavorite) onToggleFavorite(skin) else onToggleLocalLike(skin)
-                                }
+                                onClick = { onSkinClick(skin) }
                             )
                         }
                     }
@@ -637,9 +599,7 @@ private fun TradeFeedOwnerRow(
 @Composable
 private fun TradeFeedSkinCell(
     skin: Skin,
-    likedLocal: Boolean,
     onClick: () -> Unit,
-    onStarClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -660,32 +620,6 @@ private fun TradeFeedSkinCell(
                     .clip(RoundedCornerShape(6.dp))
                     .clickable(onClick = onClick)
             )
-            IconButton(
-                onClick = onStarClick,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .size(28.dp)
-            ) {
-                val inFavorites = skin.isFavorite
-                Icon(
-                    imageVector = when {
-                        inFavorites -> Icons.Filled.Star
-                        likedLocal -> Icons.Filled.Star
-                        else -> Icons.Outlined.StarBorder
-                    },
-                    contentDescription = if (inFavorites) {
-                        stringResource(R.string.favorites_remove)
-                    } else {
-                        stringResource(R.string.home_feed_skin_like_toggle)
-                    },
-                    modifier = Modifier.size(18.dp),
-                    tint = when {
-                        inFavorites -> MaterialTheme.colorScheme.primary
-                        likedLocal -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f)
-                    }
-                )
-            }
         }
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -701,9 +635,7 @@ private fun TradeFeedSkinCell(
 @Composable
 private fun SkinListingCard(
     skin: Skin,
-    onClick: () -> Unit,
-    onFavoriteClick: () -> Unit,
-    showFavorite: Boolean = true
+    onClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
@@ -742,18 +674,6 @@ private fun SkinListingCard(
                     fontWeight = FontWeight.SemiBold,
                     color = PriceGreen
                 )
-            }
-            if (showFavorite) {
-                IconButton(
-                    onClick = onFavoriteClick,
-                    modifier = Modifier.size(40.dp)
-                ) {
-                    Icon(
-                        imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                        contentDescription = if (skin.isFavorite) stringResource(R.string.favorites_remove) else stringResource(R.string.favorites_add),
-                        tint = if (skin.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         }
     }

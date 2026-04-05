@@ -27,9 +27,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -120,17 +117,6 @@ fun SkinDetailScreen(
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurface
                     )
-                }
-            },
-            actions = {
-                if (!isOwnOffer && !isCreatingOffer && skin != null && !state.isTradeFeedOffer) {
-                    IconButton(onClick = { viewModel.toggleFavorite() }) {
-                        Icon(
-                            imageVector = if (skin.isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                            contentDescription = if (skin.isFavorite) stringResource(R.string.favorites_remove) else stringResource(R.string.favorites_add),
-                            tint = if (skin.isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                        )
-                    }
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(

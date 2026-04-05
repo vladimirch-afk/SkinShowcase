@@ -117,7 +117,6 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
         itemsApi: ApiService,
         inventoryApi: InventoryApiService
     ): List<Skin> {
-        val favoriteIds = SkinsProvider.repository.getFavoriteSkinIds()
         val catalogByClassId = mutableMapOf<String, Skin>()
         val result = mutableListOf<Skin>()
         for (selection in content) {
@@ -128,7 +127,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                 val assetId = item.assetId?.trim()?.takeIf { it.isNotEmpty() }
                 val resolved = catalogByClassId[classId] ?: run {
                     val fromCatalog = runCatching {
-                        itemsApi.getSkinById(classId).toSkinDto().toDomain(isFavorite = false)
+                        itemsApi.getSkinById(classId).toSkinDto().toDomain()
                     }.getOrNull()
                     if (fromCatalog != null) {
                         catalogByClassId[classId] = fromCatalog
@@ -139,7 +138,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                                 steamId = owner,
                                 assetId = assetId,
                                 classId = classId
-                            ).toSkin(isFavorite = false, offerOwnerSteamId = owner)
+                            ).toSkin(offerOwnerSteamId = owner)
                         }.getOrNull()
                     } else {
                         null
@@ -148,8 +147,7 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
                 result.add(
                     resolved.copy(
                         offerOwnerSteamId = owner,
-                        inventoryAssetId = assetId,
-                        isFavorite = resolved.id in favoriteIds
+                        inventoryAssetId = assetId
                     )
                 )
             }
@@ -194,74 +192,5 @@ class HomeViewModel : BaseViewModel<HomeUiState>() {
 
     fun setSortOption(option: SortOption) {
         updateState { it.copy(sortOption = option) }
-    }
-
-    fun toggleFavorite(skin: Skin) {
-        launch {
-            val repo = SkinsProvider.repository
-            val added = !skin.isFavorite
-            if (skin.isFavorite) repo.removeFromFavorites(skin.id)
-            else repo.addToFavorites(skin)
-            val likeKey = tradeFeedLikeKey(skin)
-            updateState { state ->
-                val nextLikes = if (skin.offerOwnerSteamId != null && added) {
-                    state.tradeFeedLocalLikes - likeKey
-                } else {
-                    state.tradeFeedLocalLikes
-                }
-                state.copy(
-                    skins = state.skins.map {
-                        if (matchesTradeFeedSkinSlot(it, skin)) it.copy(isFavorite = !it.isFavorite) else it
-                    },
-                    tradeFeedLocalLikes = nextLikes
-                )
-            }
-            AppAnalytics.reportEvent(if (added) "favorite_added" else "favorite_removed", mapOf("skin_id" to skin.id))
-        }
-    }
-
-    fun toggleTradeFeedLocalLike(skin: Skin) {
-        if (skin.offerOwnerSteamId == null || skin.isFavorite) return
-        val key = tradeFeedLikeKey(skin)
-        updateState { state ->
-            val next = if (key in state.tradeFeedLocalLikes) {
-                state.tradeFeedLocalLikes - key
-            } else {
-                state.tradeFeedLocalLikes + key
-            }
-            state.copy(tradeFeedLocalLikes = next)
-        }
-    }
-
-    fun commitTradeFeedLikesForOwner(ownerSteamId: String) {
-        launch {
-            val repo = SkinsProvider.repository
-            val snapshot = uiState.value
-            val likes = snapshot.tradeFeedLocalLikes
-            val toAdd = snapshot.skins.filter { candidate ->
-                candidate.offerOwnerSteamId == ownerSteamId &&
-                    tradeFeedLikeKey(candidate) in likes &&
-                    !candidate.isFavorite
-            }
-            for (item in toAdd) {
-                repo.addToFavorites(item)
-            }
-            val keysDone = toAdd.map { tradeFeedLikeKey(it) }.toSet()
-            updateState { state ->
-                state.copy(
-                    tradeFeedLocalLikes = state.tradeFeedLocalLikes - keysDone,
-                    skins = state.skins.map { skin ->
-                        val mark = toAdd.any { matchesTradeFeedSkinSlot(it, skin) }
-                        if (mark) skin.copy(isFavorite = true) else skin
-                    }
-                )
-            }
-            if (toAdd.isNotEmpty()) {
-                AppAnalytics.reportEvent(
-                    "trade_feed_owner_commit_likes",
-                    mapOf("owner_steam_id" to ownerSteamId, "count" to toAdd.size.toString())
-                )
-            }
-        }
     }
 }

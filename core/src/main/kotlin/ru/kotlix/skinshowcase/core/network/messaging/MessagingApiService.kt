@@ -16,6 +16,12 @@ interface MessagingApiService {
     @GET("api/chats")
     suspend fun getChats(): List<ChatDto>
 
+    /**
+     * Найти чат по имени или Steam ID (на сервере резолв через auth, затем сводка чата).
+     */
+    @GET("api/chats/by-username/{username}")
+    suspend fun getChatByUsername(@Path("username") username: String): ChatDto
+
     @GET("api/chats/{chatId}/messages")
     suspend fun getMessages(
         @Path("chatId") chatId: String,

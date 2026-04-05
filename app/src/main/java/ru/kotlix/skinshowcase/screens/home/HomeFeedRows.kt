@@ -77,9 +77,6 @@ internal fun buildHomeTradeFeedRows(
     return rows
 }
 
-internal fun HomeTradeFeedRow.ownerHasAnyFavorite(): Boolean =
-    primarySkins.any { it.isFavorite } || carouselSkins.any { it.isFavorite }
-
 private fun sortOwnersForFeed(
     matchingByOwner: Map<String, List<Skin>>,
     sortOption: SortOption,

@@ -19,7 +19,6 @@ object OverlayRoutes {
     const val CHAT = "chat/{chatId}"
     const val SETTINGS = "settings"
     const val ABOUT = "about"
-    const val FAVORITES = "favorites"
     const val DEAL_HISTORY = "deal_history"
     const val DOCUMENT = "document/{documentId}"
     const val TRADE_LINK = "trade_link"

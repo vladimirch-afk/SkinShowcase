@@ -30,7 +30,6 @@ import ru.kotlix.skinshowcase.screens.home.HomeScreen
 import ru.kotlix.skinshowcase.message.chats.ChatsListScreen
 import ru.kotlix.skinshowcase.message.chat.ChatScreen
 import ru.kotlix.skinshowcase.screens.profile.ProfileScreen
-import ru.kotlix.skinshowcase.screens.favorites.FavoritesScreen
 import ru.kotlix.skinshowcase.screens.tradelink.TradeLinkScreen
 import ru.kotlix.skinshowcase.screens.settings.SettingsScreen
 import ru.kotlix.skinshowcase.message.chats.ChatsListViewModel
@@ -142,7 +141,6 @@ fun SkinsShowcaseNavHost(
                 ProfileScreen(
                     onNavigateToSettings = { navController.navigate(OverlayRoutes.SETTINGS) },
                     onNavigateToAbout = { navController.navigate(OverlayRoutes.ABOUT) },
-                    onNavigateToFavorites = { navController.navigate(OverlayRoutes.FAVORITES) },
                     onNavigateToTradeLink = { navController.navigate(OverlayRoutes.TRADE_LINK) },
                     onViewAllOffers = {
                         navController.navigate(TabRoutes.SKINS) {
@@ -222,12 +220,6 @@ fun SkinsShowcaseNavHost(
             }
             composable(OverlayRoutes.TRADE_LINK) {
                 TradeLinkScreen(onBack = { navController.popBackStack() })
-            }
-            composable(OverlayRoutes.FAVORITES) {
-                FavoritesScreen(
-                    onSkinClick = { skinId -> navController.navigate(skinDetailRoute(skinId)) },
-                    onBack = { navController.popBackStack() }
-                )
             }
             composable(OverlayRoutes.CREATE_OFFER) {
                 CreateOfferSelectSkinScreen(

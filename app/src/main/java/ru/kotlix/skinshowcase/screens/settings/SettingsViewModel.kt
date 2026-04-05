@@ -11,7 +11,6 @@ import ru.kotlix.skinshowcase.settings.PrivacyPreferences
 data class SettingsUiState(
     val darkTheme: Boolean = false,
     val showProfile: Boolean = true,
-    val showOffers: Boolean = true,
     val isLoadingPrivacy: Boolean = false,
     val privacyLoadError: String? = null,
     val privacySyncError: String? = null
@@ -20,8 +19,7 @@ data class SettingsUiState(
 class SettingsViewModel : BaseViewModel<SettingsUiState>() {
 
     override fun initialState(): SettingsUiState = SettingsUiState(
-        showProfile = PrivacyPreferences.getShowProfile(),
-        showOffers = PrivacyPreferences.getShowOffers()
+        showProfile = PrivacyPreferences.getShowProfile()
     )
 
     init {
@@ -76,11 +74,6 @@ class SettingsViewModel : BaseViewModel<SettingsUiState>() {
                 }
             )
         }
-    }
-
-    fun setShowOffers(show: Boolean) {
-        PrivacyPreferences.setShowOffers(show)
-        updateState { it.copy(showOffers = show) }
     }
 
     fun clearPrivacyErrors() {

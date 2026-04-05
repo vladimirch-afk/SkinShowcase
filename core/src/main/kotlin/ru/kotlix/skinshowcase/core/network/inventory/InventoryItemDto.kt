@@ -9,5 +9,9 @@ data class InventoryItemDto(
     @SerializedName("marketHashName") val marketHashName: String? = null,
     @SerializedName("iconUrl") val iconUrl: String? = null,
     @SerializedName("floatValue") val floatValue: Double? = null,
-    @SerializedName("wearName") val wearName: String? = null
+    @SerializedName("wearName") val wearName: String? = null,
+    @SerializedName(
+        value = "catalogMinPriceUsd",
+        alternate = ["catalog_min_price_usd"]
+    ) val catalogMinPriceUsd: Double? = null
 )

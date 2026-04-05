@@ -2,6 +2,10 @@ package ru.kotlix.skinshowcase.mock
 
 import java.time.Instant
 import kotlinx.coroutines.delay
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody.Companion.toResponseBody
+import retrofit2.HttpException
+import retrofit2.Response
 import ru.kotlix.skinshowcase.core.network.messaging.ChatDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessageDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessageResponseDto
@@ -16,6 +20,28 @@ class MockMessagingApiService : MessagingApiService {
     override suspend fun getChats(): List<ChatDto> {
         delay(MOCK_DELAY_MS)
         return MockData.getChats()
+    }
+
+    override suspend fun getChatByUsername(username: String): ChatDto {
+        delay(MOCK_DELAY_MS)
+        val t = username.trim()
+        if (t == MockData.profileSteamId) {
+            throwHttp(400, "Cannot get chat with yourself")
+        }
+        for (c in MockData.getChats()) {
+            if (c.counterpartySteamId == t) return c
+            if (c.counterpartyNickname?.equals(t, ignoreCase = true) == true) return c
+        }
+        if (t.length == 17 && t.all { it.isDigit() }) {
+            return ChatDto(
+                counterpartySteamId = t,
+                counterpartyNickname = t,
+                lastMessagePreview = "",
+                lastMessageAt = Instant.EPOCH.toString(),
+                avatarUrl = null
+            )
+        }
+        throwUserNotFound(t)
     }
 
     override suspend fun getMessages(
@@ -66,5 +92,20 @@ class MockMessagingApiService : MessagingApiService {
 
     private companion object {
         const val MOCK_DELAY_MS = 100L
+
+        private fun throwUserNotFound(username: String): Nothing {
+            val safe = username.replace("\\", "\\\\").replace("\"", "\\\"")
+            val json =
+                """{"title":"Not Found","status":404,"detail":"User not found: $safe"}"""
+            val body = json.toResponseBody("application/problem+json".toMediaType())
+            throw HttpException(Response.error<ChatDto>(404, body))
+        }
+
+        private fun throwHttp(code: Int, detail: String): Nothing {
+            val safe = detail.replace("\\", "\\\\").replace("\"", "\\\"")
+            val json = """{"title":"Error","status":$code,"detail":"$safe"}"""
+            val body = json.toResponseBody("application/problem+json".toMediaType())
+            throw HttpException(Response.error<ChatDto>(code, body))
+        }
     }
 }

@@ -17,7 +17,6 @@ data class ProfileUiState(
     val activeOffers: List<OfferSummary> = emptyList(),
     val dealHistory: List<DealSummary> = emptyList(),
     val showProfile: Boolean = true,
-    val showOffers: Boolean = true,
     val isRefreshing: Boolean = false,
     /** Ошибка загрузки профиля (в т.ч. HTTP 403 — заблокированный аккаунт). */
     val refreshError: String? = null,

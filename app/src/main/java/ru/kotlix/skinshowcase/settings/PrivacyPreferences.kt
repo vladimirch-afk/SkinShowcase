@@ -4,13 +4,12 @@ import android.content.Context
 import android.content.SharedPreferences
 
 /**
- * Хранение настроек конфиденциальности (профиль и офферы видимы или нет).
+ * Хранение настроек конфиденциальности (видимость профиля).
  */
 object PrivacyPreferences {
 
     private const val PREFS_NAME = "privacy_prefs"
     private const val KEY_SHOW_PROFILE = "show_profile"
-    private const val KEY_SHOW_OFFERS = "show_offers"
 
     @Volatile
     private var prefs: SharedPreferences? = null
@@ -25,11 +24,5 @@ object PrivacyPreferences {
 
     fun setShowProfile(value: Boolean) {
         prefs?.edit()?.putBoolean(KEY_SHOW_PROFILE, value)?.apply()
-    }
-
-    fun getShowOffers(): Boolean = prefs?.getBoolean(KEY_SHOW_OFFERS, true) ?: true
-
-    fun setShowOffers(value: Boolean) {
-        prefs?.edit()?.putBoolean(KEY_SHOW_OFFERS, value)?.apply()
     }
 }

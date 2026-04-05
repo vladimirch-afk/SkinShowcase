@@ -41,10 +41,10 @@ fun InventoryItemDetailResponseDto.toSkinDto(): SkinDto? {
     )
 }
 
-fun InventoryItemDetailResponseDto.toSkin(isFavorite: Boolean, offerOwnerSteamId: String?): Skin? {
+fun InventoryItemDetailResponseDto.toSkin(offerOwnerSteamId: String?): Skin? {
     val inv = item ?: return null
     val dto = toSkinDto() ?: return null
-    val base = dto.dtoToDomain(isFavorite = isFavorite)
+    val base = dto.dtoToDomain()
     val asset = inv.assetId?.trim()?.takeIf { it.isNotEmpty() }
     val containerLike = isContainerLikeSteamItem(inv.type, inv.marketHashName, inv.name)
     val descAndExtras = buildDescriptionAndExtraLines(inv.extraAttributes)

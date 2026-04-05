@@ -17,7 +17,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Sell
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -114,9 +113,7 @@ fun SettingsScreen(
             }
             PrivacySettingsCard(
                 showProfile = state.showProfile,
-                showOffers = state.showOffers,
-                onShowProfileChange = viewModel::setShowProfile,
-                onShowOffersChange = viewModel::setShowOffers
+                onShowProfileChange = viewModel::setShowProfile
             )
         }
     }
@@ -125,9 +122,7 @@ fun SettingsScreen(
 @Composable
 private fun PrivacySettingsCard(
     showProfile: Boolean,
-    showOffers: Boolean,
     onShowProfileChange: (Boolean) -> Unit,
-    onShowOffersChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -188,20 +183,6 @@ private fun PrivacySettingsCard(
                     subtitle = stringResource(R.string.settings_show_profile_summary),
                     checked = showProfile,
                     onCheckedChange = onShowProfileChange
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp)
-                        .height(1.dp)
-                        .background(MaterialTheme.colorScheme.outlineVariant)
-                )
-                PrivacySettingRow(
-                    icon = Icons.Outlined.Sell,
-                    title = stringResource(R.string.settings_show_offers),
-                    subtitle = stringResource(R.string.settings_show_offers_summary),
-                    checked = showOffers,
-                    onCheckedChange = onShowOffersChange
                 )
             }
         }

@@ -30,6 +30,6 @@ object SkinsProvider {
             val api = injectedApiService ?: RetrofitProvider.create(ApiService::class.java)
             val inventoryApi = RetrofitProvider.create(InventoryApiService::class.java)
             val db = DatabaseProvider.create(ctx)
-            return SkinsRepository(api, inventoryApi, db.favoriteSkinDao(), db.skinCacheDao()).also { cachedRepository = it }
+            return SkinsRepository(api, inventoryApi, db.skinCacheDao()).also { cachedRepository = it }
         }
 }

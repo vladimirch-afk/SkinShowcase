@@ -1,14 +1,10 @@
 package ru.kotlix.skinshowcase.core.repository
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import ru.kotlix.skinshowcase.core.database.dao.FavoriteSkinDao
 import ru.kotlix.skinshowcase.core.database.dao.SkinCacheDao
 import ru.kotlix.skinshowcase.core.database.mapper.toCachedSkinEntity
 import ru.kotlix.skinshowcase.core.database.mapper.toSkinDto
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain
-import ru.kotlix.skinshowcase.core.domain.mapper.toFavoriteEntity
 import ru.kotlix.skinshowcase.core.network.ApiService
 import ru.kotlix.skinshowcase.core.network.isApiForbidden
 import ru.kotlix.skinshowcase.core.network.toSkinDto
@@ -17,12 +13,11 @@ import ru.kotlix.skinshowcase.core.network.inventory.toSkin
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain as dtoToDomain
 
 /**
- * Single source of truth: remote API + local cache (Room) + favorites (Room).
+ * Single source of truth: remote API + local cache (Room).
  */
 class SkinsRepository(
     private val api: ApiService,
     private val inventoryApi: InventoryApiService,
-    private val favoriteDao: FavoriteSkinDao,
     private val skinCacheDao: SkinCacheDao
 ) {
 
@@ -31,11 +26,7 @@ class SkinsRepository(
         private val STEAM_ID_64 = Regex("^765\\d{14}$")
     }
 
-    fun observeFavorites(): Flow<List<Skin>> =
-        favoriteDao.observeAll().map { list -> list.map { it.toDomain() } }
-
     suspend fun getSkinsFromApi(): List<Skin> {
-        val favoriteIds = favoriteDao.getAllIds().toSet()
         val remote = runCatching { api.getSkins() }
         if (remote.isFailure) {
             val e = remote.exceptionOrNull()
@@ -46,11 +37,11 @@ class SkinsRepository(
                 val list = remote.getOrThrow()
                 skinCacheDao.deleteAll()
                 skinCacheDao.insertAll(list.mapIndexed { index, dto -> dto.toCachedSkinEntity(orderIndex = index) })
-                list.map { dto -> dto.dtoToDomain(isFavorite = dto.id in favoriteIds) }
+                list.map { dto -> dto.dtoToDomain() }
             }
             else -> {
                 val cached = skinCacheDao.getAll()
-                cached.map { it.toSkinDto().dtoToDomain(isFavorite = it.id in favoriteIds) }
+                cached.map { it.toSkinDto().dtoToDomain() }
             }
         }
     }
@@ -61,12 +52,10 @@ class SkinsRepository(
         inventoryAssetId: String? = null,
         offerOwnerSteamId: String? = null
     ): Skin? {
-        val isFav = favoriteDao.getById(id) != null
         val fromInventory = fetchInventoryItemDetailSkin(
             classId = id,
             ownerSteamId = inventoryOwnerSteamId,
             assetId = inventoryAssetId,
-            isFavorite = isFav,
             offerOwnerSteamId = offerOwnerSteamId
         )
         if (fromInventory != null) {
@@ -82,11 +71,11 @@ class SkinsRepository(
             fromApi.isSuccess -> {
                 val dto = fromApi.getOrThrow()
                 skinCacheDao.insert(dto.toCachedSkinEntity(orderIndex = 0))
-                dto.dtoToDomain(isFavorite = isFav).withInventoryContext(inventoryAssetId, offerOwnerSteamId)
+                dto.dtoToDomain().withInventoryContext(inventoryAssetId, offerOwnerSteamId)
             }
             else -> {
                 val cached = skinCacheDao.getById(id) ?: return null
-                cached.toSkinDto().dtoToDomain(isFavorite = isFav).withInventoryContext(inventoryAssetId, offerOwnerSteamId)
+                cached.toSkinDto().dtoToDomain().withInventoryContext(inventoryAssetId, offerOwnerSteamId)
             }
         }
     }
@@ -95,7 +84,6 @@ class SkinsRepository(
         classId: String,
         ownerSteamId: String?,
         assetId: String?,
-        isFavorite: Boolean,
         offerOwnerSteamId: String?
     ): Skin? {
         val owner = ownerSteamId?.trim()?.takeIf { STEAM_ID_64.matches(it) } ?: return null
@@ -113,7 +101,7 @@ class SkinsRepository(
             if (e != null && e.isApiForbidden()) throw e
         }
         val dto = inv.getOrNull() ?: return null
-        return dto.toSkin(isFavorite = isFavorite, offerOwnerSteamId = offerOwnerSteamId)
+        return dto.toSkin(offerOwnerSteamId = offerOwnerSteamId)
     }
 
     private fun Skin.withInventoryContext(assetId: String?, offerOwnerSteamId: String?): Skin {
@@ -124,18 +112,4 @@ class SkinsRepository(
         if (o != null) result = result.copy(offerOwnerSteamId = o)
         return result
     }
-
-    suspend fun addToFavorites(skin: Skin) {
-        favoriteDao.insert(skin.toFavoriteEntity(addedAtMillis = System.currentTimeMillis()))
-    }
-
-    suspend fun removeFromFavorites(skinId: String) {
-        favoriteDao.deleteById(skinId)
-    }
-
-    suspend fun isFavorite(skinId: String): Boolean =
-        favoriteDao.getById(skinId) != null
-
-    suspend fun getFavoriteSkinIds(): Set<String> =
-        favoriteDao.getAllIds().toSet()
 }

@@ -15,8 +15,6 @@ data class HomeUiState(
     val sortOption: SortOption = SortOption.DEFAULT,
     /** true — главная грузит GET /api/v1/trades/feed; фильтр/сортировка применяются на клиенте к полученному списку. */
     val tradeFeedMode: Boolean = true,
-    /** Лента обменов: ключи предметов, отмеченных «лайком» до добавления в избранное. */
-    val tradeFeedLocalLikes: Set<String> = emptySet(),
     /** Пресетная аватарка текущего пользователя (URL GET /auth/avatars/{id}). */
     val userAvatarUrl: String = AvatarUrls.userAvatarUrl(null)
 )

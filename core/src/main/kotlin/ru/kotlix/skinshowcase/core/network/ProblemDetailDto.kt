@@ -3,6 +3,7 @@ package ru.kotlix.skinshowcase.core.network
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import retrofit2.HttpException
+import java.util.Locale
 
 /**
  * RFC 7807 Problem Details (application/problem+json), как отдаёт api-gateway.
@@ -55,9 +56,47 @@ fun Throwable.bestApiMessage(): String {
         return message?.takeIf { it.isNotBlank() } ?: toString()
     }
     val raw = http.response()?.errorBody()?.use { it.string() }?.takeIf { it.isNotBlank() }
-        ?: return http.message()
+        ?: return humanizeHttpFallback(http.code(), http.message())
     val parsed = runCatching { problemDetailGson.fromJson(raw, ProblemDetailDto::class.java) }.getOrNull()
     val detail = parsed?.detail?.trim()?.takeIf { it.isNotEmpty() }
     val title = parsed?.title?.trim()?.takeIf { it.isNotEmpty() }
-    return detail ?: title ?: http.message()
+    humanizeProblemDetail(http.code(), detail, title)?.let { return it }
+    return detail ?: title ?: humanizeHttpFallback(http.code(), http.message())
 }
+
+/**
+ * Понятные тексты для типичных Problem Details (messaging, auth через gateway).
+ */
+private fun humanizeProblemDetail(httpCode: Int, detail: String?, title: String?): String? {
+    val d = detail?.lowercase(Locale.ROOT) ?: ""
+    if (httpCode == 404) {
+        if (d.startsWith("user not found")) {
+            return "Пользователь с таким именем или Steam ID не найден."
+        }
+    }
+    if (httpCode == 400) {
+        if (d.contains("cannot get chat with yourself")) {
+            return "Нельзя открыть чат с самим собой."
+        }
+        if (d.contains("cannot send message to yourself")) {
+            return "Нельзя отправить сообщение самому себе."
+        }
+        if (d.contains("invalid steam id")) {
+            return "Некорректный Steam ID: нужна строка из 17 цифр."
+        }
+    }
+    if (httpCode == 500) {
+        if (d == "internal server error" || d.isBlank()) {
+            return "Ошибка сервера. Попробуйте позже."
+        }
+    }
+    return null
+}
+
+private fun humanizeHttpFallback(httpCode: Int, retrofitMessage: String): String =
+    when (httpCode) {
+        404 -> "Не найдено."
+        400 -> "Некорректный запрос."
+        500 -> "Ошибка сервера. Попробуйте позже."
+        else -> retrofitMessage
+    }

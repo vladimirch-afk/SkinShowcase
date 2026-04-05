@@ -91,7 +91,6 @@ private val SKIN_THUMB_SIZE = 48.dp
 fun ProfileScreen(
     onNavigateToSettings: () -> Unit = {},
     onNavigateToAbout: () -> Unit = {},
-    onNavigateToFavorites: () -> Unit = {},
     onNavigateToTradeLink: () -> Unit = {},
     onViewAllOffers: () -> Unit = {},
     onCreateOffer: () -> Unit = {},
@@ -186,9 +185,6 @@ fun ProfileScreen(
         )
         Spacer(modifier = Modifier.height(12.dp))
 
-        FavoritesCard(onClick = onNavigateToFavorites)
-        Spacer(modifier = Modifier.height(12.dp))
-
         DocumentsCard(
             apiDocuments = state.legalDocumentsFromApi,
             onDocumentClick = onDocumentClick
@@ -197,7 +193,6 @@ fun ProfileScreen(
 
         SettingsCard(
             showProfile = state.showProfile,
-            showOffers = state.showOffers,
             onClick = onNavigateToSettings
         )
         Spacer(modifier = Modifier.height(12.dp))
@@ -718,23 +713,6 @@ private fun ProfilePeekRow(
 }
 
 @Composable
-private fun FavoritesCard(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    ProfileSectionCard(
-        title = stringResource(R.string.profile_favorites),
-        modifier = modifier.clickable(onClick = onClick)
-    ) {
-        Text(
-            text = stringResource(R.string.profile_view_favorites),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
-}
-
-@Composable
 private fun DocumentsCard(
     apiDocuments: List<LegalDocumentSummaryDto>,
     onDocumentClick: (String) -> Unit,
@@ -770,7 +748,6 @@ private fun DocumentsCard(
 @Composable
 private fun SettingsCard(
     showProfile: Boolean,
-    showOffers: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -793,11 +770,6 @@ private fun SettingsCard(
                 label = stringResource(R.string.settings_label_profile_short),
                 visible = showProfile
             )
-            PrivacyStatusChip(
-                label = stringResource(R.string.settings_label_offers_short),
-                visible = showOffers,
-                isOffers = true
-            )
         }
     }
 }
@@ -806,14 +778,12 @@ private fun SettingsCard(
 private fun PrivacyStatusChip(
     label: String,
     visible: Boolean,
-    isOffers: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val statusText = when {
-        isOffers && visible -> stringResource(R.string.settings_status_offers_visible)
-        isOffers && !visible -> stringResource(R.string.settings_status_offers_hidden)
-        visible -> stringResource(R.string.settings_status_visible)
-        else -> stringResource(R.string.settings_status_hidden)
+    val statusText = if (visible) {
+        stringResource(R.string.settings_status_visible)
+    } else {
+        stringResource(R.string.settings_status_hidden)
     }
     val backgroundColor = if (visible) MaterialTheme.colorScheme.primaryContainer
     else MaterialTheme.colorScheme.surfaceVariant

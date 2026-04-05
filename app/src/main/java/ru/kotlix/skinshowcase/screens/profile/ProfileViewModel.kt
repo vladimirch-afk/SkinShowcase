@@ -22,16 +22,12 @@ class ProfileViewModel : BaseViewModel<ProfileUiState>() {
         steamId = null,
         activeOffers = emptyList(),
         dealHistory = emptyList(),
-        showProfile = PrivacyPreferences.getShowProfile(),
-        showOffers = PrivacyPreferences.getShowOffers()
+        showProfile = PrivacyPreferences.getShowProfile()
     )
 
     fun refreshPrivacy() {
         updateState {
-            it.copy(
-                showProfile = PrivacyPreferences.getShowProfile(),
-                showOffers = PrivacyPreferences.getShowOffers()
-            )
+            it.copy(showProfile = PrivacyPreferences.getShowProfile())
         }
     }
 

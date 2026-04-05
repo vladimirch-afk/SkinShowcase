@@ -242,21 +242,6 @@ class SkinDetailViewModel(
         }
     }
 
-    fun toggleFavorite() {
-        val s = _uiState.value.skin ?: return
-        if (_uiState.value.isTradeFeedOffer) return
-        viewModelScope.launch {
-            val repo = SkinsProvider.repository
-            val added = !s.isFavorite
-            if (s.isFavorite) repo.removeFromFavorites(s.id)
-            else repo.addToFavorites(s)
-            _uiState.update {
-                it.copy(skin = it.skin?.copy(isFavorite = !it.skin!!.isFavorite))
-            }
-            AppAnalytics.reportEvent(if (added) "favorite_added" else "favorite_removed", mapOf("skin_id" to s.id))
-        }
-    }
-
     // --- данные-заглушки (отключены, загрузка через api-gateway) ---
     // private fun sampleSkin(id: String): Skin = Skin(...)
 }

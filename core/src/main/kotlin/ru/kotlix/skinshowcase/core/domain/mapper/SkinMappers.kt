@@ -1,19 +1,17 @@
 package ru.kotlix.skinshowcase.core.domain.mapper
 
-import ru.kotlix.skinshowcase.core.database.entity.FavoriteSkinEntity
 import ru.kotlix.skinshowcase.core.domain.Skin
 import ru.kotlix.skinshowcase.core.domain.SkinRarity
 import ru.kotlix.skinshowcase.core.domain.SkinSpecial
 import ru.kotlix.skinshowcase.core.domain.SkinWear
 import ru.kotlix.skinshowcase.core.network.SkinDto
 
-fun SkinDto.toDomain(isFavorite: Boolean = false): Skin =
+fun SkinDto.toDomain(): Skin =
     Skin(
         id = id,
         name = name,
         imageUrl = imageUrl,
         price = price,
-        isFavorite = isFavorite,
         floatValue = floatValue,
         stickerNames = stickerNames.orEmpty(),
         collection = collection,
@@ -33,21 +31,3 @@ private fun parseWear(s: String?): SkinWear? =
 
 private fun parseSpecial(s: String?): SkinSpecial? =
     if (s.isNullOrBlank()) null else runCatching { SkinSpecial.valueOf(s.trim()) }.getOrNull()
-
-fun FavoriteSkinEntity.toDomain(): Skin =
-    Skin(
-        id = id,
-        name = name,
-        imageUrl = imageUrl,
-        price = price,
-        isFavorite = true
-    )
-
-fun Skin.toFavoriteEntity(addedAtMillis: Long): FavoriteSkinEntity =
-    FavoriteSkinEntity(
-        id = id,
-        name = name,
-        imageUrl = imageUrl,
-        price = price,
-        addedAtMillis = addedAtMillis
-    )

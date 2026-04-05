@@ -14,7 +14,6 @@ data class Skin(
     val name: String,
     val imageUrl: String? = null,
     val price: Double? = null,
-    val isFavorite: Boolean = false,
     val floatValue: Double? = null,
     val special: SkinSpecial? = null,
     val patternIndex: Int? = null,
