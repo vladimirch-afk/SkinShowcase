@@ -26,6 +26,8 @@ data class Skin(
     val wear: SkinWear? = null,
     /** Владелец набора в ленте обменов (для GET trade-link при открытии карточки). */
     val offerOwnerSteamId: String? = null,
+    /** Имя владельца с API (`personaName`), приоритетнее ника из чатов на экране деталей. */
+    val offerOwnerPersonaName: String? = null,
     /** Экземпляр из Steam-инвентаря (assetId), если строка пришла с GET /api/v1/inventory. */
     val inventoryAssetId: String? = null,
     /** Steam `type`, напр. «Consumer Grade Shotgun», «Base Grade Container». */

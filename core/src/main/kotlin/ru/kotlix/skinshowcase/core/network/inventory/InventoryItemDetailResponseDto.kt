@@ -10,7 +10,8 @@ data class InventoryItemDetailResponseDto(
     @SerializedName("appId") val appId: Int? = null,
     @SerializedName("contextId") val contextId: Int? = null,
     @SerializedName("item") val item: InventoryItemPayloadDto? = null,
-    @SerializedName("catalogPrice") val catalogPrice: ItemCatalogPricePayloadDto? = null
+    @SerializedName("catalogPrice") val catalogPrice: ItemCatalogPricePayloadDto? = null,
+    @SerializedName("personaName") val personaName: String? = null
 )
 
 data class InventoryItemPayloadDto(

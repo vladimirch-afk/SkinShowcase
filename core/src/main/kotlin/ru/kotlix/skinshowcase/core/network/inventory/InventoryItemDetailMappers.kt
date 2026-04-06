@@ -5,6 +5,7 @@ import ru.kotlix.skinshowcase.core.domain.SkinExtraInfoLine
 import ru.kotlix.skinshowcase.core.domain.SkinRarity
 import ru.kotlix.skinshowcase.core.domain.SkinSpecial
 import ru.kotlix.skinshowcase.core.domain.SkinWear
+import ru.kotlix.skinshowcase.core.domain.steamFieldsImplyContainer
 import ru.kotlix.skinshowcase.core.domain.mapper.toDomain as dtoToDomain
 import ru.kotlix.skinshowcase.core.network.SkinDto
 import java.util.Locale
@@ -46,11 +47,12 @@ fun InventoryItemDetailResponseDto.toSkin(offerOwnerSteamId: String?): Skin? {
     val dto = toSkinDto() ?: return null
     val base = dto.dtoToDomain()
     val asset = inv.assetId?.trim()?.takeIf { it.isNotEmpty() }
-    val containerLike = isContainerLikeSteamItem(inv.type, inv.marketHashName, inv.name)
+    val containerLike = steamFieldsImplyContainer(inv.type, inv.marketHashName, inv.name)
     val descAndExtras = buildDescriptionAndExtraLines(inv.extraAttributes)
     return base.copy(
         inventoryAssetId = asset,
         offerOwnerSteamId = offerOwnerSteamId,
+        offerOwnerPersonaName = personaName?.trim()?.takeIf { it.isNotEmpty() },
         steamItemType = inv.type?.trim()?.takeIf { it.isNotEmpty() },
         marketHashName = inv.marketHashName?.trim()?.takeIf { it.isNotEmpty() },
         inspectLink = inv.inspectLink?.trim()?.takeIf { it.isNotEmpty() },
@@ -60,20 +62,6 @@ fun InventoryItemDetailResponseDto.toSkin(offerOwnerSteamId: String?): Skin? {
         extraInfoLines = descAndExtras.second,
         rarity = base.rarity ?: inferRarityFromSteamType(inv.type)
     )
-}
-
-private fun isContainerLikeSteamItem(
-    type: String?,
-    marketHashName: String?,
-    name: String?
-): Boolean {
-    val t = type?.lowercase(Locale.ROOT).orEmpty()
-    if (t.contains("container")) return true
-    val m = marketHashName?.lowercase(Locale.ROOT).orEmpty()
-    if (m.endsWith(" case")) return true
-    val n = name?.lowercase(Locale.ROOT).orEmpty()
-    if (n.endsWith(" case")) return true
-    return false
 }
 
 private fun buildDescriptionAndExtraLines(

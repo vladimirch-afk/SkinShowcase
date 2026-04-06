@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.util.Base64
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingWebSocketHub
 import ru.kotlix.skinshowcase.settings.AuthTokenPreferences
 
 /**
@@ -24,6 +25,7 @@ object DevLoginBypass {
         if (!BuildConfig.DEBUG || !ENABLED) return
         val jwt = minimalJwtWithSub(STEAM_ID)
         AuthTokenPreferences.setToken(jwt)
+        MessagingWebSocketHub.syncWithToken(jwt)
         CurrentUser.steamId = STEAM_ID
         app.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE)
             .edit()

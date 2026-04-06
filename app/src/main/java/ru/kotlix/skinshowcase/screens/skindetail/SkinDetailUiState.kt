@@ -9,6 +9,8 @@ data class SkinDetailUiState(
     val sellerNickname: String? = null,
     val sellerSteamId: String? = null,
     val sellerTradeLink: String? = null,
+    /** Пресет с auth batch или аватар текущего пользователя для своего оффера. */
+    val sellerAvatarUrl: String? = null,
     val isCreatingOffer: Boolean = false,
     val navigateToMyOffers: Boolean = false,
     val isSubmittingOffer: Boolean = false,

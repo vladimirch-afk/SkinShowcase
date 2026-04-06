@@ -2,14 +2,15 @@ package ru.kotlix.skinshowcase.message.domain
 
 import ru.kotlix.skinshowcase.core.network.messaging.ChatDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessageDto
+import ru.kotlix.skinshowcase.core.network.messaging.resolvedCounterpartyAvatarUrl
 
 fun ChatDto.toChatItem(): ChatItem = ChatItem(
     id = counterpartySteamId,
-    nickname = counterpartyNickname?.takeIf { it.isNotBlank() } ?: counterpartySteamId,
+    nickname = counterpartySteamId,
     lastMessage = lastMessagePreview ?: "",
     lastMessageTimeMillis = parseLastMessageAtToMillis(lastMessageAt),
     unreadCount = 0,
-    avatarUrl = avatarUrl
+    avatarUrl = resolvedCounterpartyAvatarUrl()
 )
 
 private fun parseLastMessageAtToMillis(iso8601: String?): Long {

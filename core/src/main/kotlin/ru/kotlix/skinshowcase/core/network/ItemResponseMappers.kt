@@ -16,5 +16,6 @@ fun ItemResponseDto.toSkinDto(): SkinDto =
         wear = null,
         special = null,
         patternIndex = null,
-        keychainNames = null
+        keychainNames = null,
+        personaName = personaName
     )

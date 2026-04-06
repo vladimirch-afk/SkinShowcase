@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import io.appmetrica.analytics.push.AppMetricaPush
 import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingWebSocketHub
 import ru.kotlix.skinshowcase.core.network.auth.JwtSubjectParser
 import ru.kotlix.skinshowcase.designsystem.theme.SkinShowcaseTheme
 import ru.kotlix.skinshowcase.navigation.SkinsShowcaseNavHost
@@ -34,10 +35,13 @@ private const val KEY_AUTHORIZED = "authorized"
 
 class MainActivity : ComponentActivity() {
 
+    private val pendingOpenChatFromNotification = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         processPushIntent(intent)
+        pendingOpenChatFromNotification.value = openChatIdFrom(intent)
         setContent {
             SkinShowcaseTheme(darkTheme = true) {
                 val context = LocalContext.current
@@ -52,6 +56,7 @@ class MainActivity : ComponentActivity() {
                         onAuthorized = { accessToken ->
                             AuthTokenPreferences.setToken(accessToken)
                             CurrentUser.steamId = JwtSubjectParser.parseSteamId(accessToken)
+                            MessagingWebSocketHub.syncWithToken(accessToken)
                             AppAnalytics.reportLoginSuccess()
                             prefs.edit().putBoolean(KEY_AUTHORIZED, true).apply()
                             showOnboarding = false
@@ -61,10 +66,14 @@ class MainActivity : ComponentActivity() {
                     )
                 } else {
                     requestNotificationPermissionIfNeeded()
+                    val openChatExtra = pendingOpenChatFromNotification.value
                     SkinsShowcaseNavHost(
+                        pendingOpenChatId = openChatExtra,
+                        onConsumedPendingOpenChat = { pendingOpenChatFromNotification.value = null },
                         onLogout = {
                             AppAnalytics.reportEvent("logout")
                             AuthTokenPreferences.setToken(null)
+                            MessagingWebSocketHub.syncWithToken(null)
                             CurrentUser.steamId = null
                             TradeLinkPreferences.clearTradeLink()
                             prefs.edit().putBoolean(KEY_AUTHORIZED, false).apply()
@@ -81,7 +90,15 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         processPushIntent(intent)
+        pendingOpenChatFromNotification.value = openChatIdFrom(intent)
     }
+
+    companion object {
+        const val EXTRA_OPEN_CHAT_ID = "ru.kotlix.skinshowcase.EXTRA_OPEN_CHAT_ID"
+    }
+
+    private fun openChatIdFrom(intent: android.content.Intent?): String? =
+        intent?.getStringExtra(EXTRA_OPEN_CHAT_ID)?.trim()?.takeIf { it.isNotEmpty() }
 
     private fun processPushIntent(intent: android.content.Intent?) {
         if (intent == null) return

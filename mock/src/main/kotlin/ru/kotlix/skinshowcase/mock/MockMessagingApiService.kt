@@ -38,6 +38,8 @@ class MockMessagingApiService : MessagingApiService {
                 counterpartyNickname = t,
                 lastMessagePreview = "",
                 lastMessageAt = Instant.EPOCH.toString(),
+                support = false,
+                counterpartyPresetAvatarId = 1,
                 avatarUrl = null
             )
         }

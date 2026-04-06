@@ -8,9 +8,11 @@ import ru.kotlix.skinshowcase.core.network.SkinsProvider
 import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
 import ru.kotlix.skinshowcase.core.network.auth.JwtSubjectParser
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingWebSocketHub
 import ru.kotlix.skinshowcase.onboarding.SteamAuthConfig
 import ru.kotlix.skinshowcase.settings.AuthTokenPreferences
 import ru.kotlix.skinshowcase.settings.PrivacyPreferences
+import ru.kotlix.skinshowcase.messaging.ChatWebSocketNotificationListener
 import ru.kotlix.skinshowcase.settings.TradeLinkPreferences
 
 class SkinsShowcaseApplication : Application() {
@@ -30,6 +32,8 @@ class SkinsShowcaseApplication : Application() {
         SkinsProvider.init(this, apiService = null)
         MessagingProvider.init(this, api = null)
         setDebugAuthTokenFromBuildConfig()
+        MessagingWebSocketHub.syncWithToken(DebugAuthToken.token)
+        ChatWebSocketNotificationListener.start(this)
     }
 
     private fun restoreApiTokenFromPreferences() {

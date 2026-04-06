@@ -46,11 +46,21 @@ private const val TAB_ANIMATION_DURATION_MS = 300
 @Composable
 fun SkinsShowcaseNavHost(
     navController: NavHostController = rememberNavController(),
+    pendingOpenChatId: String? = null,
+    onConsumedPendingOpenChat: () -> Unit = {},
     onLogout: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    LaunchedEffect(pendingOpenChatId) {
+        val id = pendingOpenChatId?.trim()?.takeIf { it.isNotEmpty() } ?: return@LaunchedEffect
+        navController.navigate(chatRoute(id)) {
+            launchSingleTop = true
+        }
+        onConsumedPendingOpenChat()
+    }
     val isTabRoute = currentRoute in setOf(
         TabRoutes.HOME,
         TabRoutes.SKINS,

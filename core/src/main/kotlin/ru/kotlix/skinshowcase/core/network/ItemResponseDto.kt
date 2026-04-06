@@ -9,5 +9,7 @@ data class ItemResponseDto(
     @SerializedName("itemId") val itemId: String,
     @SerializedName("name") val name: String,
     @SerializedName("minPriceUsd") val minPriceUsd: Double? = null,
-    @SerializedName("updatedAt") val updatedAt: String? = null
+    @SerializedName("updatedAt") val updatedAt: String? = null,
+    /** Отображаемое имя владельца предложения (Steam persona), для экрана карточки предмета. */
+    @SerializedName("personaName") val personaName: String? = null
 )

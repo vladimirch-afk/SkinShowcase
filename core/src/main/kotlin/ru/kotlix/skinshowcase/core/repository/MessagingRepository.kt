@@ -90,4 +90,12 @@ class MessagingRepository(
             onFailure = { Result.Error(it) }
         )
     }
+
+    /** Сохранить сообщение из WebSocket, если его ещё нет в кэше (для открытого чата). */
+    suspend fun insertWebSocketMessageIfAbsent(chatId: String, dto: MessageDto): Boolean {
+        val existing = messageCacheDao.getByChatId(chatId).any { cached -> cached.id == dto.id }
+        if (existing) return false
+        messageCacheDao.insert(dto.toCachedMessageEntity(chatId))
+        return true
+    }
 }

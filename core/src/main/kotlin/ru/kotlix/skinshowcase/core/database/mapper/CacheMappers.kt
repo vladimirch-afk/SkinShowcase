@@ -1,6 +1,7 @@
 package ru.kotlix.skinshowcase.core.database.mapper
 
 import ru.kotlix.skinshowcase.core.database.entity.CachedChatEntity
+import ru.kotlix.skinshowcase.core.network.messaging.resolvedCounterpartyAvatarUrl
 import ru.kotlix.skinshowcase.core.database.entity.CachedMessageEntity
 import ru.kotlix.skinshowcase.core.database.entity.CachedSkinEntity
 import ru.kotlix.skinshowcase.core.domain.Skin
@@ -55,7 +56,8 @@ fun CachedSkinEntity.toSkinDto(): SkinDto =
         wear = wear,
         special = special,
         patternIndex = patternIndex,
-        keychainNames = jsonToStringList(keychainNamesJson)
+        keychainNames = jsonToStringList(keychainNamesJson),
+        personaName = null
     )
 
 fun ChatDto.toCachedChatEntity(): CachedChatEntity =
@@ -64,7 +66,7 @@ fun ChatDto.toCachedChatEntity(): CachedChatEntity =
         counterpartyNickname = counterpartyNickname,
         lastMessagePreview = lastMessagePreview,
         lastMessageAt = lastMessageAt,
-        avatarUrl = avatarUrl
+        avatarUrl = avatarUrl ?: resolvedCounterpartyAvatarUrl()
     )
 
 fun CachedChatEntity.toChatDto(): ChatDto =
@@ -73,6 +75,8 @@ fun CachedChatEntity.toChatDto(): ChatDto =
         counterpartyNickname = counterpartyNickname,
         lastMessagePreview = lastMessagePreview,
         lastMessageAt = lastMessageAt,
+        support = false,
+        counterpartyPresetAvatarId = null,
         avatarUrl = avatarUrl
     )
 

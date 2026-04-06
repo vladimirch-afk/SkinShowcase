@@ -193,6 +193,19 @@ object ProfileDataProvider {
         }
     }
 
+    /**
+     * Подпись для владельца/собеседника: ник из чатов, если сервер его отдал, иначе понятная заглушка по Steam ID.
+     * (Отдельного публичного displayName по steamId в текущем API нет.)
+     */
+    suspend fun resolveCounterpartyDisplayName(steamId: String): String {
+        val id = steamId.trim()
+        if (id.length != 17 || !id.all { it.isDigit() }) {
+            return id.ifEmpty { "—" }
+        }
+        getCounterpartyNicknameFromChats(id)?.let { return it }
+        return "Пользователь ${id.takeLast(4)}"
+    }
+
     suspend fun getOffers(): List<OfferSummary> {
         val steamId = resolveSteamId() ?: return emptyList()
         val selection = runCatching {
@@ -418,5 +431,8 @@ object ProfileDataProvider {
         )
     }
 
+    /**
+     * Заглушка: владелец передаётся с ленты через [Skin.offerOwnerSteamId] и аргументы навигации.
+     */
     suspend fun getSellerForSkin(skinId: String): SellerInfo? = null
 }

@@ -14,6 +14,9 @@ import ru.kotlix.skinshowcase.analytics.AppAnalytics
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.SkinsProvider
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.auth.AvatarUrls
+import ru.kotlix.skinshowcase.core.network.auth.CurrentUser
+import ru.kotlix.skinshowcase.core.network.auth.RemotePresetAvatarUrls
 import ru.kotlix.skinshowcase.core.network.auth.ReportUserRequestDto
 import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.data.ProfileDataProvider
@@ -62,6 +65,7 @@ class SkinDetailViewModel(
                     sellerSteamId = profile.steamId
                 )
             }
+            refreshSellerAvatar()
         }
     }
 
@@ -76,6 +80,7 @@ class SkinDetailViewModel(
                         sellerTradeLink = seller.tradeLink
                     )
                 }
+                refreshSellerAvatar()
             }
         }
     }
@@ -85,18 +90,31 @@ class SkinDetailViewModel(
             _uiState.update {
                 it.copy(
                     sellerSteamId = steamId,
-                    sellerNickname = null,
                     sellerTradeLink = null
                 )
             }
             val link = ProfileDataProvider.getTradeLinkForSteamId(steamId)
-            val nickname = ProfileDataProvider.getCounterpartyNicknameFromChats(steamId)
+            val persona = _uiState.value.skin?.offerOwnerPersonaName?.trim()?.takeIf { it.isNotEmpty() }
+            val nickname = persona ?: ProfileDataProvider.resolveCounterpartyDisplayName(steamId)
             _uiState.update {
                 it.copy(
                     sellerTradeLink = link,
                     sellerNickname = nickname
                 )
             }
+            refreshSellerAvatar()
+        }
+    }
+
+    private fun refreshSellerAvatar() {
+        viewModelScope.launch {
+            val sid = _uiState.value.sellerSteamId?.trim()?.takeIf { it.length == 17 } ?: return@launch
+            val self = CurrentUser.steamId?.trim()
+            val url = when {
+                isOwnOffer || isCreatingOffer || sid == self -> AvatarUrls.currentUserAvatarDisplayUrl()
+                else -> RemotePresetAvatarUrls.urlForSteamId(sid)
+            }
+            _uiState.update { it.copy(sellerAvatarUrl = url) }
         }
     }
 
@@ -130,18 +148,22 @@ class SkinDetailViewModel(
                             errorMessage = if (skin == null) "Скин не найден" else null
                         )
                     }
-                    if (skin != null && offerOwnerSteamId != null) {
+                    if (skin != null && !isOwnOffer && !isCreatingOffer) {
                         viewModelScope.launch {
-                            val nick = ProfileDataProvider.getCounterpartyNicknameFromChats(offerOwnerSteamId)
-                            if (!nick.isNullOrBlank()) {
-                                _uiState.update { cur ->
-                                    if (cur.sellerNickname.isNullOrBlank()) {
-                                        cur.copy(sellerNickname = nick)
-                                    } else {
-                                        cur
-                                    }
+                            val persona = skin.offerOwnerPersonaName?.trim()?.takeIf { it.isNotEmpty() }
+                            val inferred = offerOwnerSteamId
+                                ?: skin.offerOwnerSteamId?.trim()?.takeIf { id ->
+                                    id.length == 17 && id.all { it.isDigit() }
                                 }
+                            _uiState.update { s ->
+                                val steam = s.sellerSteamId ?: inferred
+                                val nick = persona?.takeIf { it.isNotEmpty() }
+                                    ?: s.sellerNickname?.takeIf { !it.isNullOrBlank() }
+                                    ?: inferred?.let { ProfileDataProvider.resolveCounterpartyDisplayName(it) }
+                                    ?: s.sellerNickname
+                                s.copy(sellerSteamId = steam, sellerNickname = nick)
                             }
+                            refreshSellerAvatar()
                         }
                     }
                 },

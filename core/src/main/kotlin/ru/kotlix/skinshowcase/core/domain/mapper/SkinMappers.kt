@@ -20,7 +20,8 @@ fun SkinDto.toDomain(): Skin =
         special = parseSpecial(special),
         patternIndex = patternIndex,
         hasKeychain = !keychainNames.isNullOrEmpty(),
-        keychainNames = keychainNames.orEmpty()
+        keychainNames = keychainNames.orEmpty(),
+        offerOwnerPersonaName = personaName?.trim()?.takeIf { it.isNotEmpty() }
     )
 
 private fun parseRarity(s: String?): SkinRarity? =

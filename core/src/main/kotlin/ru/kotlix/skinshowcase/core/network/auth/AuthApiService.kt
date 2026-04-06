@@ -55,4 +55,7 @@ interface AuthApiService {
 
     @GET("auth/users/{steamId}/trade-link")
     suspend fun getUserTradeLink(@Path("steamId") steamId: String): UserTradeLinkResponseDto
+
+    @POST("auth/users/preset-avatar-ids")
+    suspend fun batchPresetAvatarIds(@Body body: BatchSteamIdsRequestDto): BatchPresetAvatarIdsResponseDto
 }

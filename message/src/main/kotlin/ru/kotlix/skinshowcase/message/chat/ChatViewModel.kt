@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -14,9 +15,13 @@ import ru.kotlix.skinshowcase.core.Result
 import ru.kotlix.skinshowcase.core.network.RetrofitProvider
 import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.core.network.auth.AuthApiService
+import ru.kotlix.skinshowcase.core.network.auth.RemotePresetAvatarUrls
 import ru.kotlix.skinshowcase.core.network.auth.ReportUserRequestDto
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingWebSocketHub
+import ru.kotlix.skinshowcase.core.network.messaging.isParticipantInChat
+import ru.kotlix.skinshowcase.core.network.messaging.toMessageDto
 import ru.kotlix.skinshowcase.message.chats.ChatsListViewModel
 import ru.kotlix.skinshowcase.message.domain.MessageItem
 import ru.kotlix.skinshowcase.message.domain.toMessageItem
@@ -42,7 +47,11 @@ class ChatViewModel(
 
     private val _uiState = MutableStateFlow(
         ChatUiState(
-            chatTitle = if (ChatsListViewModel.isSupportChatId(chatId)) "Поддержка" else "Чат $chatId",
+            chatTitle = when {
+                ChatsListViewModel.isSupportChatId(chatId) -> "Поддержка"
+                reportTargetSteamId != null -> reportTargetSteamId
+                else -> chatId.trim()
+            },
             canReportCounterparty = reportTargetSteamId != null
         )
     )
@@ -50,6 +59,31 @@ class ChatViewModel(
 
     init {
         loadMessages()
+        loadCounterpartyAvatar()
+        viewModelScope.launch {
+            MessagingWebSocketHub.messages.collect { dto ->
+                if (!dto.isParticipantInChat(chatId)) return@collect
+                val messageDto = dto.toMessageDto()
+                val inserted = withContext(Dispatchers.IO) {
+                    repository.insertWebSocketMessageIfAbsent(chatId, messageDto)
+                }
+                if (!inserted) return@collect
+                val item = messageDto.toMessageItem()
+                _uiState.update { state ->
+                    state.copy(
+                        messages = (state.messages + item).sortedChronologically()
+                    )
+                }
+            }
+        }
+    }
+
+    private fun loadCounterpartyAvatar() {
+        val sid = reportTargetSteamId ?: return
+        viewModelScope.launch {
+            val url = RemotePresetAvatarUrls.urlForSteamId(sid)
+            _uiState.update { it.copy(counterpartyAvatarUrl = url) }
+        }
     }
 
     fun loadMessages() {

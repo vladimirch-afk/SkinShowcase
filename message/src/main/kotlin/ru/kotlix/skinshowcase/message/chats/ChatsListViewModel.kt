@@ -2,6 +2,8 @@ package ru.kotlix.skinshowcase.message.chats
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
@@ -12,9 +14,11 @@ import ru.kotlix.skinshowcase.core.network.bestApiMessage
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingApiService
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingChatPaths
 import ru.kotlix.skinshowcase.core.network.messaging.MessagingProvider
+import ru.kotlix.skinshowcase.core.network.messaging.MessagingWebSocketHub
 import ru.kotlix.skinshowcase.message.domain.ChatItem
 import ru.kotlix.skinshowcase.message.domain.toChatItem
 
+@OptIn(FlowPreview::class)
 class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 
     private val repository = MessagingProvider.repository
@@ -26,6 +30,11 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 
     init {
         loadChats()
+        launch {
+            MessagingWebSocketHub.messages
+                .debounce(400)
+                .collect { loadChats() }
+        }
     }
 
     fun loadChats() {
@@ -47,10 +56,9 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                 when (result) {
                     is Result.Success -> {
                         val fromApi = result.data.map { dto -> dto.toChatItem() }
-                        val withSupport = pinnedSupportChat() + fromApi.filter { chat ->
-                            !MessagingChatPaths.isSupportMessagingSteamId(chat.id) &&
-                                chat.id != SUPPORT_CHAT_ID
-                        }
+                        val supportApiRow = fromApi.find { ChatsListViewModel.isSupportChatId(it.id) }
+                        val rest = fromApi.filter { !ChatsListViewModel.isSupportChatId(it.id) }
+                        val withSupport = listOf(mergePinnedSupport(supportApiRow)) + rest
                         updateState {
                             it.copy(
                                 chats = withSupport,
@@ -63,8 +71,7 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
                     is Result.Error -> updateState {
                         it.copy(
                             chats = pinnedSupportChat() + it.chats.filter { c ->
-                                !MessagingChatPaths.isSupportMessagingSteamId(c.id) &&
-                                    c.id != SUPPORT_CHAT_ID
+                                !ChatsListViewModel.isSupportChatId(c.id)
                             },
                             isLoading = false,
                             isRefreshing = false,
@@ -173,7 +180,18 @@ class ChatsListViewModel : BaseViewModel<ChatsListUiState>() {
 }
 
 /** Чат поддержки всегда закреплён сверху списка (как в продукте). */
-private fun pinnedSupportChat(): List<ChatItem> = listOf(supportChatItem())
+private fun pinnedSupportChat(): List<ChatItem> = listOf(mergePinnedSupport(null))
+
+private fun mergePinnedSupport(apiRow: ChatItem?): ChatItem {
+    val base = supportChatItem()
+    if (apiRow == null) return base
+    return base.copy(
+        lastMessage = apiRow.lastMessage,
+        lastMessageTimeMillis = apiRow.lastMessageTimeMillis,
+        unreadCount = apiRow.unreadCount,
+        avatarUrl = apiRow.avatarUrl ?: base.avatarUrl
+    )
+}
 
 private fun supportChatItem(): ChatItem = ChatItem(
     id = ChatsListViewModel.SUPPORT_CHAT_ID,

@@ -347,7 +347,7 @@ private fun ChatListItem(
     val displayNickname = if (ChatsListViewModel.isSupportChatId(chat.id)) {
         stringResource(R.string.message_support_chat)
     } else {
-        chat.nickname
+        chat.id.trim().ifEmpty { chat.nickname }
     }
     Card(
         onClick = onClick,
@@ -410,13 +410,6 @@ private fun ChatListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 if (!ChatsListViewModel.isSupportChatId(chat.id)) {
-                    Text(
-                        text = chat.id,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
                     Spacer(modifier = Modifier.height(2.dp))
                 }
                 Text(

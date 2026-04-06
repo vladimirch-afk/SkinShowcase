@@ -4,6 +4,8 @@ import ru.kotlix.skinshowcase.message.domain.MessageItem
 
 data class ChatUiState(
     val chatTitle: String = "",
+    /** Пресетная аватарка собеседника (auth API); для поддержки не запрашиваем. */
+    val counterpartyAvatarUrl: String? = null,
     val messages: List<MessageItem> = emptyList(),
     val messageDraft: String = "",
     val isLoading: Boolean = false,

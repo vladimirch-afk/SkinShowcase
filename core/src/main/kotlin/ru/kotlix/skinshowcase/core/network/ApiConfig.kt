@@ -1,5 +1,8 @@
 package ru.kotlix.skinshowcase.core.network
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
 /**
  * Базовый URL **api-gateway** (Spring Cloud Gateway) для HTTP-клиента.
  *
@@ -23,4 +26,19 @@ object ApiConfig {
     const val CONNECT_TIMEOUT_SEC = 15L
     const val READ_TIMEOUT_SEC = 30L
     const val WRITE_TIMEOUT_SEC = 30L
+
+    /**
+     * WebSocket чатов через **тот же** api-gateway, что и [BASE_URL].
+     * Контракт: `ws` или `wss` на тот же хост, путь `/ws/messages?token=<JWT>` (маршрут gateway на префикс `/ws/messages/`).
+     */
+    fun messagingWebSocketUrl(bearerToken: String): String {
+        val base = BASE_URL.trimEnd('/')
+        val wsAuthority = when {
+            base.startsWith("https://") -> "wss://" + base.removePrefix("https://")
+            base.startsWith("http://") -> "ws://" + base.removePrefix("http://")
+            else -> base
+        }
+        val enc = URLEncoder.encode(bearerToken.trim(), StandardCharsets.UTF_8)
+        return "$wsAuthority/ws/messages?token=$enc"
+    }
 }

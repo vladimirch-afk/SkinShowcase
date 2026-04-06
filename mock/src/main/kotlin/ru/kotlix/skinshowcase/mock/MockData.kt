@@ -80,7 +80,8 @@ object MockData {
         wear = wear,
         special = special,
         patternIndex = patternIndex,
-        keychainNames = keychainNames
+        keychainNames = keychainNames,
+        personaName = null
     )
 
     /** Ключ хранилища мока для чата поддержки (в UI навигация с плейсхолдером `support`). */
@@ -90,17 +91,51 @@ object MockData {
         if (MessagingChatPaths.isSupportMessagingSteamId(apiChatId)) SUPPORT_CHAT_ID else apiChatId
 
     private val mutableChats: MutableList<ChatDto> = mutableListOf(
-        ChatDto(SUPPORT_CHAT_ID, "Поддержка", "Здравствуйте! Опишите вашу проблему или вопрос — мы постараемся помочь.", "2025-03-14T10:00:00Z", null),
         ChatDto(
-            MessagingChatPaths.SUPPORT_MESSAGING_STEAM_ID,
-            "Поддержка",
-            "Дубликат с сервера (17×0) — в приложении скрыт",
-            "2025-03-14T09:00:00Z",
-            null
+            counterpartySteamId = SUPPORT_CHAT_ID,
+            counterpartyNickname = "Поддержка",
+            lastMessagePreview = "Здравствуйте! Опишите вашу проблему или вопрос — мы постараемся помочь.",
+            lastMessageAt = "2025-03-14T10:00:00Z",
+            support = true,
+            counterpartyPresetAvatarId = null,
+            avatarUrl = null
         ),
-        ChatDto("76561198012345601", "Trader_AWP", "Привет! Рад знакомству.", "2025-03-14T12:30:00Z", null),
-        ChatDto("76561198123456702", "SteamUser_Pro", "Добрый день!", "2025-03-13T18:00:00Z", null),
-        ChatDto("76561198234567803", "HappyTrader", "Здравствуйте!", "2025-03-12T09:15:00Z", null)
+        ChatDto(
+            counterpartySteamId = MessagingChatPaths.SUPPORT_MESSAGING_STEAM_ID,
+            counterpartyNickname = "Поддержка",
+            lastMessagePreview = "Дубликат с сервера (17×0) — в приложении скрыт",
+            lastMessageAt = "2025-03-14T09:00:00Z",
+            support = true,
+            counterpartyPresetAvatarId = null,
+            avatarUrl = null
+        ),
+        ChatDto(
+            counterpartySteamId = "76561198012345601",
+            counterpartyNickname = "Trader_AWP",
+            lastMessagePreview = "Привет! Рад знакомству.",
+            lastMessageAt = "2025-03-14T12:30:00Z",
+            support = false,
+            counterpartyPresetAvatarId = 2,
+            avatarUrl = null
+        ),
+        ChatDto(
+            counterpartySteamId = "76561198123456702",
+            counterpartyNickname = "SteamUser_Pro",
+            lastMessagePreview = "Добрый день!",
+            lastMessageAt = "2025-03-13T18:00:00Z",
+            support = false,
+            counterpartyPresetAvatarId = 3,
+            avatarUrl = null
+        ),
+        ChatDto(
+            counterpartySteamId = "76561198234567803",
+            counterpartyNickname = "HappyTrader",
+            lastMessagePreview = "Здравствуйте!",
+            lastMessageAt = "2025-03-12T09:15:00Z",
+            support = false,
+            counterpartyPresetAvatarId = 4,
+            avatarUrl = null
+        )
     )
 
     fun getChats(): List<ChatDto> = mutableChats.toList()
@@ -152,7 +187,15 @@ object MockData {
             )
         } else {
             mutableChats.add(
-                ChatDto(chatId, nickname, lastMessageText, nowIso, avatarUrl)
+                ChatDto(
+                    counterpartySteamId = chatId,
+                    counterpartyNickname = nickname,
+                    lastMessagePreview = lastMessageText,
+                    lastMessageAt = nowIso,
+                    support = false,
+                    counterpartyPresetAvatarId = null,
+                    avatarUrl = avatarUrl
+                )
             )
         }
         sortChatsByLastMessage()

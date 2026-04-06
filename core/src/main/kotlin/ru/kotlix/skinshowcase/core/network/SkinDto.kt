@@ -14,5 +14,6 @@ data class SkinDto(
     @SerializedName("wear") val wear: String? = null,
     @SerializedName("special") val special: String? = null,
     @SerializedName("patternIndex") val patternIndex: Int? = null,
-    @SerializedName("keychainNames") val keychainNames: List<String>? = null
+    @SerializedName("keychainNames") val keychainNames: List<String>? = null,
+    @SerializedName("personaName") val personaName: String? = null
 )

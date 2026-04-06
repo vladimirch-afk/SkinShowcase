@@ -22,6 +22,17 @@ object AvatarUrls {
         return presetImageUrl(id)
     }
 
+    /** Значение из POST /auth/users/preset-avatar-ids (1–8); null — пользователь не найден в auth. */
+    fun presetUrlFromAuthBatch(presetId: Int?): String? {
+        val p = presetId ?: return null
+        if (p < 1 || p > PresetAvatarConstants.MAX_PRESET_ID) return null
+        return presetImageUrl(p.toString())
+    }
+
+    private object PresetAvatarConstants {
+        const val MAX_PRESET_ID = 8
+    }
+
     /** URL для шапки/офферов после [ProfileDataProvider.syncCurrentUserFromAuthMe]. */
     fun currentUserAvatarDisplayUrl(): String {
         val src = CurrentUser.avatarSource?.trim()?.uppercase(Locale.US)
